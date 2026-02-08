@@ -16,6 +16,55 @@ compatibility: Requires supabase CLI and Supabase MCP server
 
 ## Process
 
+### Phase 0: Setup Verification (run once per project)
+
+Before starting any backend work, verify the project's infrastructure is in place.
+
+**1. Run the check query** — Load [`assets/check_setup.sql`](./assets/check_setup.sql) and execute it via `execute_sql`. It returns a JSON object like:
+
+```json
+{
+  "extensions": { "pg_net": true, "vault": true },
+  "functions":  { "_internal_get_secret": true, "_internal_call_edge_function": true, "_internal_call_edge_function_sync": true },
+  "secrets":    { "SUPABASE_URL": true, "SB_PUBLISHABLE_KEY": true, "SB_SECRET_KEY": true },
+  "ready": true
+}
+```
+
+If `"ready": true` — skip to Phase 1. Otherwise, fix what's missing:
+
+**2. Missing extensions** — Apply via `apply_migration`:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_net;
+-- vault is typically enabled by default; if not:
+CREATE EXTENSION IF NOT EXISTS supabase_vault;
+```
+
+**3. Missing internal functions** — Copy [`assets/setup.sql`](./assets/setup.sql) functions into the project's `supabase/schemas/50_functions/_internal/` schema files, then apply via `apply_migration`.
+
+**4. Missing Vault secrets** — Two paths depending on agent capabilities:
+
+- **Agent path (preferred):** If you have `execute_sql`, ask the user for their project URL, publishable key, and secret key. Then for each missing secret run:
+  ```sql
+  SELECT vault.create_secret('<value>', '<secret_name>');
+  ```
+  Use these exact secret names: `SUPABASE_URL`, `SB_PUBLISHABLE_KEY`, `SB_SECRET_KEY`.
+
+- **Manual path (fallback):** If you cannot run SQL directly, point the user to the setup script:
+  ```bash
+  ./scripts/setup_vault_secrets.sh \
+    --url "https://your-project.supabase.co" \
+    --publishable-key "sb_publishable_..." \
+    --secret-key "sb_secret_..."
+  ```
+
+**5. Re-run the check** to confirm `"ready": true` before proceeding.
+
+> **📝 Load [Initial Project Setup](./references/workflows.md#initial-project-setup) for the detailed step-by-step workflow.**
+
+---
+
 ### Phase 1: Schema Changes
 
 Write structural changes to the appropriate schema file based on the folder structure:
@@ -75,7 +124,9 @@ Load these as needed during development:
 
 ### Setup & Infrastructure
 
-- **[⚙️ Setup Guide](./assets/setup.sql)** — Vault secrets, internal utility functions
+- **[🔍 Setup Check](./assets/check_setup.sql)** — Verify extensions, functions, and secrets exist
+- **[⚙️ Setup Guide](./assets/setup.sql)** — Internal utility function definitions
+- **[🔐 Vault Secrets Script](./scripts/setup_vault_secrets.sh)** — Store secrets in Vault (manual fallback)
 
 ### Workflows
 

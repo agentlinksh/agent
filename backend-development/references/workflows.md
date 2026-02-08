@@ -4,6 +4,107 @@ Step-by-step guides for common development tasks.
 
 ---
 
+## Initial Project Setup
+
+Run once per project to ensure the required infrastructure is in place. This corresponds to **Phase 0** in SKILL.md.
+
+### 1. Run the Setup Check
+
+Load `assets/check_setup.sql` and execute it via `execute_sql`. The result is a JSON object:
+
+```json
+{
+  "extensions": { "pg_net": true, "vault": true },
+  "functions":  { "_internal_get_secret": true, "_internal_call_edge_function": true, "_internal_call_edge_function_sync": true },
+  "secrets":    { "SUPABASE_URL": true, "SB_PUBLISHABLE_KEY": true, "SB_SECRET_KEY": true },
+  "ready": true
+}
+```
+
+If `"ready": true`, skip to the normal development phases. Otherwise continue below for each `false` value.
+
+### 2. Enable Missing Extensions
+
+If `extensions.pg_net` or `extensions.vault` is `false`, apply a migration:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_net;
+CREATE EXTENSION IF NOT EXISTS supabase_vault;
+```
+
+Use `apply_migration` with a descriptive name like `enable_required_extensions`.
+
+### 3. Create Missing Internal Functions
+
+If any function in the `functions` object is `false`:
+
+1. Load `assets/setup.sql` — it contains the full definitions for all three `_internal_*` functions.
+2. Copy the relevant function(s) into the project's `supabase/schemas/50_functions/_internal/` directory.
+3. Apply via `apply_migration`.
+
+The three functions and their purposes:
+
+| Function | Purpose |
+|----------|---------|
+| `_internal_get_secret(text)` | Reads a secret from Vault by name |
+| `_internal_call_edge_function(text, jsonb)` | Calls an Edge Function asynchronously via pg_net |
+| `_internal_call_edge_function_sync(text, jsonb, integer)` | Synchronous wrapper with timeout/polling |
+
+### 4. Store Missing Vault Secrets
+
+If any secret in the `secrets` object is `false`, the values need to be stored in Vault.
+
+**Required secrets:**
+
+| Secret Name | Value | Source |
+|-------------|-------|--------|
+| `SUPABASE_URL` | Project URL (e.g. `https://abc.supabase.co`) | Supabase Dashboard > Settings > API |
+| `SB_PUBLISHABLE_KEY` | Publishable (anon) API key | Supabase Dashboard > Settings > API |
+| `SB_SECRET_KEY` | Secret (service role) API key | Supabase Dashboard > Settings > API |
+
+**Path A — Agent creates secrets via `execute_sql`:**
+
+Ask the user for the missing values, then run for each:
+
+```sql
+SELECT vault.create_secret('<value>', '<secret_name>');
+```
+
+Example for all three:
+
+```sql
+SELECT vault.create_secret('https://your-project.supabase.co', 'SUPABASE_URL');
+SELECT vault.create_secret('sb_publishable_...', 'SB_PUBLISHABLE_KEY');
+SELECT vault.create_secret('sb_secret_...', 'SB_SECRET_KEY');
+```
+
+**Path B — User runs the script manually:**
+
+If `execute_sql` is not available, point the user to the setup script:
+
+```bash
+./scripts/setup_vault_secrets.sh \
+  --url "https://your-project.supabase.co" \
+  --publishable-key "sb_publishable_..." \
+  --secret-key "sb_secret_..."
+```
+
+The script handles upserts — it will update existing secrets if they already exist.
+
+### 5. Re-run the Check
+
+Run `assets/check_setup.sql` again via `execute_sql` and confirm `"ready": true` before proceeding to Phase 1.
+
+### 6. Scaffold Schema Structure (if needed)
+
+If `supabase/schemas/` doesn't exist yet, run the scaffold script:
+
+```bash
+./scripts/scaffold_schemas.sh /path/to/project
+```
+
+---
+
 ## Adding a New Entity
 
 Example: Adding a `readings` entity.

@@ -1,15 +1,18 @@
 -- =============================================================================
 -- SETUP: Internal Utility Functions
 -- =============================================================================
--- Run this setup after enabling the required extensions and configuring Vault.
+-- Defines the _internal_* functions required by the backend-development skill.
+-- Copy these into supabase/schemas/50_functions/_internal/ in your project.
 --
--- Prerequisites:
---   1. Enable pg_net extension: CREATE EXTENSION IF NOT EXISTS pg_net;
---   2. Enable vault extension (usually enabled by default in Supabase)
---   3. Store required secrets in Vault:
---      SELECT vault.create_secret('https://your-project.supabase.co', 'SUPABASE_URL');
---      SELECT vault.create_secret('your-anon-key', 'SB_PUBLISHABLE_KEY');
---      SELECT vault.create_secret('your-service-role-key', 'SB_SECRET_KEY');
+-- Before applying these functions, ensure Phase 0 (Setup Verification) passes:
+--   1. Run check_setup.sql via execute_sql to see what's missing.
+--   2. Extensions must be enabled: pg_net, supabase_vault.
+--   3. Vault secrets must be stored (use setup_vault_secrets.sh or execute_sql):
+--        SELECT vault.create_secret('<value>', 'SUPABASE_URL');
+--        SELECT vault.create_secret('<value>', 'SB_PUBLISHABLE_KEY');
+--        SELECT vault.create_secret('<value>', 'SB_SECRET_KEY');
+--
+-- See SKILL.md Phase 0 for the full verification flow.
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
