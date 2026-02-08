@@ -1,5 +1,5 @@
 ---
-name: supabase-dev-workflow
+name: backend-development
 description: Supabase backend development workflow. Use for ANY backend work in Supabase projects — schema changes, API endpoints, database functions, RLS policies, edge functions, auth, storage, business logic, or data access. Activate whenever the task involves server-side logic, data layer, or Supabase features.
 compatibility: Requires supabase CLI and Supabase MCP server
 ---
