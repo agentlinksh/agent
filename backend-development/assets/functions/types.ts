@@ -21,8 +21,12 @@ export interface SupabaseContext {
   /** Raw JWT claims — available when role is 'auth' */
   claims?: Record<string, unknown>;
 
-  /** User-scoped Supabase client (respects RLS) — available when role is 'auth' */
-  client?: SupabaseClient;
+  /**
+   * Supabase client that respects RLS — always available.
+   * - 'auth' role: user-scoped (carries the caller's JWT)
+   * - 'anon'/'admin' role: anon client (publishable key, no user context)
+   */
+  client: SupabaseClient;
 
   /** Service role Supabase client (bypasses RLS) — always available */
   adminClient: SupabaseClient;

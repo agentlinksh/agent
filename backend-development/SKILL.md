@@ -70,7 +70,8 @@ Load these as needed during development:
 
 - **[📋 Naming Conventions](./references/naming_conventions.md)** — Tables, columns, functions, indexes
 - **[🔐 RPC Patterns](./references/rpc_patterns.md)** — RPC-first architecture, auth functions, RLS policies
-- **[⚡ Edge Functions](./references/edge_functions.md)** — withSupabase wrapper, auth, CORS, shared utilities
+- **[⚡ Edge Functions](./references/edge_functions.md)** — Project structure, shared utilities, CORS, error helpers
+- **[🔧 withSupabase Wrapper](./references/with_supabase.md)** — Wrapper rules, role selection, client usage patterns
 
 ### Setup & Infrastructure
 
@@ -92,7 +93,7 @@ Load these as needed during development:
 | -------------- | ------------------------------------------------------------------------------------------------------------- |
 | Supabase CLI   | Local development, type generation, migrations                                                                |
 | Supabase MCP   | `execute_sql` tool for data fixes                                                                             |
-| Edge Functions | See [Edge Functions patterns](./references/edge_functions.md) for `withSupabase` wrapper and shared utilities |
+| Edge Functions | See [Edge Functions](./references/edge_functions.md) for project structure and [withSupabase](./references/with_supabase.md) for wrapper usage |
 
 ---
 

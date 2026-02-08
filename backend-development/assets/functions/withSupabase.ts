@@ -11,7 +11,7 @@ interface SupabaseContext {
   req: Request;
   user?: Record<string, unknown>;
   claims?: Record<string, unknown>;
-  client?: SupabaseClient;
+  client: SupabaseClient;
   adminClient: SupabaseClient;
 }
 
@@ -40,14 +40,24 @@ function getKeys() {
 /**
  * Wraps an Edge Function handler with Supabase context.
  *
- * - role: 'anon'  → No auth required. Provides adminClient only.
- * - role: 'auth'  → Validates JWT, provides user, claims, user-scoped client, and adminClient.
- * - role: 'admin' → Validates secret key in Authorization header, provides adminClient.
+ * Provides two clients on every role:
+ * - client:      respects RLS (user-scoped for 'auth', anon for 'anon'/'admin')
+ * - adminClient: bypasses RLS (service role, use deliberately)
+ *
+ * Roles:
+ * - 'anon'  → No auth required. Use for webhooks, public endpoints.
+ * - 'auth'  → Validates JWT. Provides user, claims, and user-scoped client.
+ * - 'admin' → Validates secret key in Authorization header.
  */
 export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
   const { supabaseUrl, publishableKey, secretKey } = getKeys();
 
-  // Admin client — reused across requests (no user-specific state)
+  // Anon client — reused across requests, respects RLS (no user context)
+  const anonClient = createClient(supabaseUrl, publishableKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  // Admin client — reused across requests, bypasses RLS
   const adminClient = createClient(supabaseUrl, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
@@ -59,7 +69,8 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
     }
 
     try {
-      const ctx: SupabaseContext = { req, adminClient };
+      // Default client is the anon client — overridden for 'auth' role below
+      const ctx: SupabaseContext = { req, client: anonClient, adminClient };
 
       if (config.role === "auth") {
         // Validate user JWT
@@ -72,7 +83,6 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
         }
 
         const token = authHeader.replace("Bearer ", "");
-        const anonClient = createClient(supabaseUrl, publishableKey);
         const { data, error } = await anonClient.auth.getClaims(token);
 
         if (error || !data?.claims) {
@@ -90,7 +100,7 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
           ...data.claims,
         };
 
-        // User-scoped client — respects RLS
+        // User-scoped client — respects RLS with the caller's identity
         ctx.client = createClient(supabaseUrl, publishableKey, {
           global: { headers: { Authorization: authHeader } },
         });
