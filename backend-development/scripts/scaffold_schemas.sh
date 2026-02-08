@@ -109,7 +109,7 @@ fi
 
 echo ""
 echo "🎉 Done! Next steps:"
-echo "   1. Copy setup.sql functions to 50_functions/_internal/"
+echo "   1. Copy setup.sql functions to 50_functions/_internal/ (from assets/setup.sql)"
 echo "   2. Configure Vault secrets"
 echo "   3. Add your first entity to ENTITIES.md"
 echo "   4. Start creating schema files"

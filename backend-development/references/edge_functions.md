@@ -87,9 +87,7 @@ supabase secrets set SB_PUBLISHABLE_KEY=sb_publishable_...
 supabase secrets set SB_SECRET_KEY=sb_secret_...
 ```
 
-> **Note:** `SUPABASE_URL` is available by default. `SB_PUBLISHABLE_KEY` replaces the legacy `SUPABASE_ANON_KEY`, and `SB_SECRET_KEY` replaces the legacy `SUPABASE_SERVICE_ROLE_KEY`. See [Supabase API key changes](https://github.com/orgs/supabase/discussions/29260) for details.
-
-If the user is still on legacy keys, they can use `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` instead — but encourage migration to the new keys.
+> **Note:** `SUPABASE_URL` is available by default. `SB_PUBLISHABLE_KEY` and `SB_SECRET_KEY` must be set manually.
 
 ---
 

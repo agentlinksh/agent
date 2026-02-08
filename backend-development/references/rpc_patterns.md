@@ -107,7 +107,7 @@ $$;
 Called by other functions. Never exposed to client. Need elevated access for infrastructure tasks.
 
 ```sql
--- See references/setup.sql for implementations:
+-- See assets/setup.sql for implementations:
 -- _internal_get_secret(name)        — reads vault, requires elevated access
 -- _internal_call_edge_function()    — calls edge functions, requires service role
 ```

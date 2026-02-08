@@ -74,7 +74,7 @@ Load these as needed during development:
 
 ### Setup & Infrastructure
 
-- **[⚙️ Setup Guide](./references/setup.sql)** — Vault secrets, internal utility functions
+- **[⚙️ Setup Guide](./assets/setup.sql)** — Vault secrets, internal utility functions
 
 ### Workflows
 

@@ -8,8 +8,8 @@
 --   2. Enable vault extension (usually enabled by default in Supabase)
 --   3. Store required secrets in Vault:
 --      SELECT vault.create_secret('https://your-project.supabase.co', 'SUPABASE_URL');
---      SELECT vault.create_secret('your-anon-key', 'SUPABASE_PUBLIC_KEY');
---      SELECT vault.create_secret('your-service-role-key', 'SUPABASE_PRIVATE_KEY');
+--      SELECT vault.create_secret('your-anon-key', 'SB_PUBLISHABLE_KEY');
+--      SELECT vault.create_secret('your-service-role-key', 'SB_SECRET_KEY');
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -87,14 +87,14 @@ DECLARE
 BEGIN
   -- Retrieve secrets
   supabase_url := _internal_get_secret('SUPABASE_URL');
-  service_key := _internal_get_secret('SUPABASE_PRIVATE_KEY');
-  
+  service_key := _internal_get_secret('SB_SECRET_KEY');
+
   IF supabase_url IS NULL THEN
     RAISE EXCEPTION 'SUPABASE_URL secret not found in Vault';
   END IF;
-  
+
   IF service_key IS NULL THEN
-    RAISE EXCEPTION 'SUPABASE_PRIVATE_KEY secret not found in Vault';
+    RAISE EXCEPTION 'SB_SECRET_KEY secret not found in Vault';
   END IF;
   
   -- Build the full URL

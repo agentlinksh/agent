@@ -17,24 +17,21 @@ interface SupabaseContext {
 
 type Handler = (req: Request, ctx: SupabaseContext) => Promise<Response>;
 
-// Resolve keys — prefer new SB_ keys, fall back to legacy
 function getKeys() {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const publishableKey =
-    Deno.env.get("SB_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY");
-  const secretKey =
-    Deno.env.get("SB_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const publishableKey = Deno.env.get("SB_PUBLISHABLE_KEY");
+  const secretKey = Deno.env.get("SB_SECRET_KEY");
 
   if (!supabaseUrl) throw new Error("Missing SUPABASE_URL");
   if (!publishableKey)
     throw new Error(
-      "Missing SB_PUBLISHABLE_KEY (or legacy SUPABASE_ANON_KEY). " +
-        "Set it via: supabase secrets set SB_PUBLISHABLE_KEY=sb_publishable_..."
+      "Missing SB_PUBLISHABLE_KEY. " +
+        "Set it via: supabase secrets set SB_PUBLISHABLE_KEY=<your-anon-key>"
     );
   if (!secretKey)
     throw new Error(
-      "Missing SB_SECRET_KEY (or legacy SUPABASE_SERVICE_ROLE_KEY). " +
-        "Set it via: supabase secrets set SB_SECRET_KEY=sb_secret_..."
+      "Missing SB_SECRET_KEY. " +
+        "Set it via: supabase secrets set SB_SECRET_KEY=<your-service-role-key>"
     );
 
   return { supabaseUrl, publishableKey, secretKey };
