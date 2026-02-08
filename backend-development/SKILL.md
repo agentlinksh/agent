@@ -59,6 +59,8 @@ CREATE EXTENSION IF NOT EXISTS supabase_vault;
     --secret-key "sb_secret_..."
   ```
 
+> **⚠️ Local development (supabase start):** `SUPABASE_URL` must use the Docker-internal hostname, **not** `http://127.0.0.1:54321`. From inside the Postgres container, `127.0.0.1` refers to the container itself. Use `http://host.docker.internal:54321` instead. This only applies to the Vault secret used by `_internal_call_edge_function`; the CLI and client-side code still use `http://127.0.0.1:54321`.
+
 **5. Re-run the check** to confirm `"ready": true` before proceeding.
 
 > **📝 Load [Initial Project Setup](./references/workflows.md#initial-project-setup) for the detailed step-by-step workflow.**

@@ -12,6 +12,11 @@
 --        SELECT vault.create_secret('<value>', 'SB_PUBLISHABLE_KEY');
 --        SELECT vault.create_secret('<value>', 'SB_SECRET_KEY');
 --
+-- IMPORTANT — Local dev (supabase start):
+--   SUPABASE_URL must be 'http://host.docker.internal:54321', NOT
+--   'http://127.0.0.1:54321'. Postgres runs inside Docker, so 127.0.0.1
+--   resolves to the container itself and pg_net calls will fail.
+--
 -- See SKILL.md Phase 0 for the full verification flow.
 -- =============================================================================
 
@@ -108,7 +113,7 @@ BEGIN
     url := full_url,
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || service_key
+      'apikey', service_key
     ),
     body := payload
   ) INTO request_id;

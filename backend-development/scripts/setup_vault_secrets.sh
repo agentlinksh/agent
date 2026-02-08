@@ -24,6 +24,12 @@
 #   - supabase CLI installed and project linked (for local dev)
 #   - OR a direct --db-url for remote databases
 #   - vault extension enabled in the database
+#
+# IMPORTANT — Local development (supabase start):
+#   Use --url "http://host.docker.internal:54321" instead of "http://127.0.0.1:54321".
+#   Postgres runs inside Docker, so 127.0.0.1 refers to the container itself.
+#   host.docker.internal is the standard Docker hostname that resolves to the host.
+#   This only affects the Vault secret; CLI/client code still use 127.0.0.1:54321.
 # =============================================================================
 
 set -e
@@ -60,6 +66,10 @@ while [[ $# -gt 0 ]]; do
       echo "  -h, --help               Show this help message"
       echo ""
       echo "If options are omitted, you will be prompted interactively."
+      echo ""
+      echo "LOCAL DEV NOTE:"
+      echo "  Use --url \"http://host.docker.internal:54321\" (not http://127.0.0.1:54321)."
+      echo "  Postgres runs inside Docker — 127.0.0.1 won't reach the host."
       exit 0
       ;;
     *)

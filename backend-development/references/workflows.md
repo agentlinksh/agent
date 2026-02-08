@@ -56,24 +56,34 @@ If any secret in the `secrets` object is `false`, the values need to be stored i
 
 **Required secrets:**
 
-| Secret Name | Value | Source |
-|-------------|-------|--------|
-| `SUPABASE_URL` | Project URL (e.g. `https://abc.supabase.co`) | Supabase Dashboard > Settings > API |
-| `SB_PUBLISHABLE_KEY` | Publishable (anon) API key | Supabase Dashboard > Settings > API |
-| `SB_SECRET_KEY` | Secret (service role) API key | Supabase Dashboard > Settings > API |
+| Secret Name | Production Value | Local Dev Value | Source |
+|-------------|-----------------|-----------------|--------|
+| `SUPABASE_URL` | `https://abc.supabase.co` | `http://host.docker.internal:54321` | Dashboard > Settings > API |
+| `SB_PUBLISHABLE_KEY` | Publishable (anon) API key | Same key from local config | `supabase status` or Dashboard |
+| `SB_SECRET_KEY` | Secret (service role) API key | Same key from local config | `supabase status` or Dashboard |
+
+> **⚠️ Local development (supabase start):** `SUPABASE_URL` in Vault must use `http://host.docker.internal:54321`, **not** `http://127.0.0.1:54321`. Postgres runs inside a Docker container — `127.0.0.1` resolves to the container itself, so `pg_net` HTTP calls will fail with "Couldn't connect to server". `host.docker.internal` is the standard Docker hostname that resolves to the host machine. This only affects the Vault secret used by `_internal_call_edge_function`; the CLI and client-side code still use `http://127.0.0.1:54321` as usual.
 
 **Path A — Agent creates secrets via `execute_sql`:**
 
-Ask the user for the missing values, then run for each:
+Ask the user for the missing values. If running locally (`supabase start`), use `http://host.docker.internal:54321` for `SUPABASE_URL`. Then run for each:
 
 ```sql
 SELECT vault.create_secret('<value>', '<secret_name>');
 ```
 
-Example for all three:
+Example for production:
 
 ```sql
 SELECT vault.create_secret('https://your-project.supabase.co', 'SUPABASE_URL');
+SELECT vault.create_secret('sb_publishable_...', 'SB_PUBLISHABLE_KEY');
+SELECT vault.create_secret('sb_secret_...', 'SB_SECRET_KEY');
+```
+
+Example for local development:
+
+```sql
+SELECT vault.create_secret('http://host.docker.internal:54321', 'SUPABASE_URL');
 SELECT vault.create_secret('sb_publishable_...', 'SB_PUBLISHABLE_KEY');
 SELECT vault.create_secret('sb_secret_...', 'SB_SECRET_KEY');
 ```
@@ -83,8 +93,15 @@ SELECT vault.create_secret('sb_secret_...', 'SB_SECRET_KEY');
 If `execute_sql` is not available, point the user to the setup script:
 
 ```bash
+# Production
 ./scripts/setup_vault_secrets.sh \
   --url "https://your-project.supabase.co" \
+  --publishable-key "sb_publishable_..." \
+  --secret-key "sb_secret_..."
+
+# Local development — note the Docker-internal URL
+./scripts/setup_vault_secrets.sh \
+  --url "http://host.docker.internal:54321" \
   --publishable-key "sb_publishable_..." \
   --secret-key "sb_secret_..."
 ```
