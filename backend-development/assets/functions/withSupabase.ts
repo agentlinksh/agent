@@ -26,12 +26,12 @@ function getKeys() {
   if (!publishableKey)
     throw new Error(
       "Missing SB_PUBLISHABLE_KEY. " +
-        "Set it via: supabase secrets set SB_PUBLISHABLE_KEY=<your-anon-key>"
+        "Set it via: supabase secrets set SB_PUBLISHABLE_KEY=<your-anon-key>",
     );
   if (!secretKey)
     throw new Error(
       "Missing SB_SECRET_KEY. " +
-        "Set it via: supabase secrets set SB_SECRET_KEY=<your-service-role-key>"
+        "Set it via: supabase secrets set SB_SECRET_KEY=<your-service-role-key>",
     );
 
   return { supabaseUrl, publishableKey, secretKey };
@@ -47,7 +47,7 @@ function getKeys() {
  * Roles:
  * - 'anon'  → No auth required. Use for webhooks, public endpoints.
  * - 'auth'  → Validates JWT. Provides user, claims, and user-scoped client.
- * - 'admin' → Validates secret key in Authorization header.
+ * - 'admin' → Validates secret key via apikey header.
  */
 export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
   const { supabaseUrl, publishableKey, secretKey } = getKeys();
@@ -78,7 +78,7 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
         if (!authHeader) {
           return Response.json(
             { error: "Missing Authorization header" },
-            { status: 401, headers: corsHeaders }
+            { status: 401, headers: corsHeaders },
           );
         }
 
@@ -88,7 +88,7 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
         if (error || !data?.claims) {
           return Response.json(
             { error: "Invalid or expired token" },
-            { status: 401, headers: corsHeaders }
+            { status: 401, headers: corsHeaders },
           );
         }
 
@@ -107,20 +107,19 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
       }
 
       if (config.role === "admin") {
-        // Validate that the caller is using the secret key
-        const authHeader = req.headers.get("Authorization");
-        if (!authHeader) {
+        // Validate that the caller is using the secret key via apikey header
+        const apikey = req.headers.get("apikey");
+        if (!apikey) {
           return Response.json(
-            { error: "Missing Authorization header" },
-            { status: 401, headers: corsHeaders }
+            { error: "Missing apikey header" },
+            { status: 401, headers: corsHeaders },
           );
         }
 
-        const token = authHeader.replace("Bearer ", "");
-        if (token !== secretKey) {
+        if (apikey !== secretKey) {
           return Response.json(
             { error: "Unauthorized: requires secret key" },
-            { status: 403, headers: corsHeaders }
+            { status: 403, headers: corsHeaders },
           );
         }
       }
@@ -130,7 +129,7 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
       console.error("withSupabase error:", err);
       return Response.json(
         { error: "Internal server error" },
-        { status: 500, headers: corsHeaders }
+        { status: 500, headers: corsHeaders },
       );
     }
   };

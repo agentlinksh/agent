@@ -89,7 +89,7 @@ Deno.serve(
 
 ### `admin` — Internal / Service-to-Service
 
-For functions called with the secret key. The wrapper validates that the `Authorization` header contains the correct secret key and rejects the request otherwise.
+For functions called with the secret key. The wrapper validates that the `apikey` header contains the correct secret key and rejects the request otherwise.
 
 Use this for:
 - Cron jobs / scheduled functions
