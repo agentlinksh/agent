@@ -154,6 +154,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
+SET statement_timeout = '30s'
 AS $$
 DECLARE
   request_id bigint;

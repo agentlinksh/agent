@@ -43,11 +43,11 @@ SELECT jsonb_build_object(
   ),
   'secrets', jsonb_build_object(
     'SUPABASE_URL',
-      EXISTS (SELECT 1 FROM vault.decrypted_secrets WHERE name = 'SUPABASE_URL'),
+      EXISTS (SELECT 1 FROM vault.secrets WHERE name = 'SUPABASE_URL'),
     'SB_PUBLISHABLE_KEY',
-      EXISTS (SELECT 1 FROM vault.decrypted_secrets WHERE name = 'SB_PUBLISHABLE_KEY'),
+      EXISTS (SELECT 1 FROM vault.secrets WHERE name = 'SB_PUBLISHABLE_KEY'),
     'SB_SECRET_KEY',
-      EXISTS (SELECT 1 FROM vault.decrypted_secrets WHERE name = 'SB_SECRET_KEY')
+      EXISTS (SELECT 1 FROM vault.secrets WHERE name = 'SB_SECRET_KEY')
   ),
   'ready', (
     -- All extensions present
@@ -66,9 +66,9 @@ SELECT jsonb_build_object(
       SELECT 1 FROM information_schema.routines
       WHERE routine_schema = 'public' AND routine_name = '_internal_call_edge_function_sync'
     )
-    -- All secrets present
-    AND EXISTS (SELECT 1 FROM vault.decrypted_secrets WHERE name = 'SUPABASE_URL')
-    AND EXISTS (SELECT 1 FROM vault.decrypted_secrets WHERE name = 'SB_PUBLISHABLE_KEY')
-    AND EXISTS (SELECT 1 FROM vault.decrypted_secrets WHERE name = 'SB_SECRET_KEY')
+    -- All secrets present (use vault.secrets, not decrypted_secrets — no need to decrypt)
+    AND EXISTS (SELECT 1 FROM vault.secrets WHERE name = 'SUPABASE_URL')
+    AND EXISTS (SELECT 1 FROM vault.secrets WHERE name = 'SB_PUBLISHABLE_KEY')
+    AND EXISTS (SELECT 1 FROM vault.secrets WHERE name = 'SB_SECRET_KEY')
   )
 ) AS setup_status;
