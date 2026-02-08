@@ -50,10 +50,10 @@ Folders prefixed with `_` are shared modules and are NOT deployed as edge functi
 
 ### Setting Up Shared Utilities
 
-Ready-to-use `_shared/` files are provided as assets in this skill:
+Ready-to-use shared utility files are provided as assets in this skill:
 
 ```
-assets/functions/_shared/
+assets/functions/
 ├── withSupabase.ts    # Context wrapper
 ├── cors.ts            # CORS headers
 ├── errors.ts          # Error/response helpers
@@ -63,7 +63,7 @@ assets/functions/_shared/
 **When creating the first edge function for a project**, check if `supabase/functions/_shared/withSupabase.ts` exists. If not:
 
 1. **Ask the user** if they'd like you to set up the shared edge function utilities
-2. If yes, copy the files from `assets/functions/_shared/` into the project's `supabase/functions/_shared/` directory
+2. If yes, copy the files from `assets/functions/` into the project's `supabase/functions/_shared/` directory
 3. Verify the required secrets (`SB_PUBLISHABLE_KEY`, `SB_SECRET_KEY`) are configured
 
 ---
@@ -124,7 +124,7 @@ interface SupabaseContext {
 
 ### Implementation
 
-The full implementation is provided as an asset file — see `assets/functions/_shared/withSupabase.ts`. Do not rewrite this from scratch; copy the asset file into the project.
+The full implementation is provided as an asset file — see `assets/functions/withSupabase.ts`. Do not rewrite this from scratch; copy the asset file into the project's `supabase/functions/_shared/` directory.
 
 The wrapper handles:
 - CORS preflight (`OPTIONS` requests) automatically
@@ -139,7 +139,7 @@ The wrapper handles:
 
 ## CORS
 
-CORS is handled as a separate utility, following the [official Supabase pattern](https://supabase.com/docs/guides/functions/cors). See `assets/functions/_shared/cors.ts`.
+CORS is handled as a separate utility, following the [official Supabase pattern](https://supabase.com/docs/guides/functions/cors). See `assets/functions/cors.ts` — copy it to `supabase/functions/_shared/cors.ts` in the project.
 
 Always include `corsHeaders` in your responses:
 
@@ -157,7 +157,7 @@ The `withSupabase` wrapper already handles `OPTIONS` preflight requests automati
 
 ## Error Helpers
 
-See `assets/functions/_shared/errors.ts` for response utilities:
+See `assets/functions/errors.ts` — copy it to `supabase/functions/_shared/errors.ts` in the project. Utilities:
 
 ```typescript
 import { jsonResponse, errorResponse, notFound } from "../_shared/errors.ts";
