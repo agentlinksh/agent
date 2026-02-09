@@ -1,0 +1,56 @@
+-- =============================================================================
+-- SEED: Vault Secrets for Local Development
+-- =============================================================================
+-- Append this content to your project's `supabase/seed.sql` file.
+-- The Supabase CLI runs seed.sql automatically after every `supabase db reset`,
+-- ensuring vault secrets are always repopulated.
+--
+-- IMPORTANT: This is for LOCAL DEVELOPMENT only. Production secrets are managed
+-- through the Supabase Dashboard (Settings > Vault).
+--
+-- =============================================================================
+-- WHY THESE SECRETS ARE NEEDED
+-- =============================================================================
+--
+-- The new SB_ prefixed API keys (SB_PUBLISHABLE_KEY, SB_SECRET_KEY) are NOT
+-- available by default in the database or Edge Functions environment. They must
+-- be configured manually:
+--
+--   1. As Edge Function environment secrets (via `supabase secrets set` or .env)
+--      → used by withSupabase wrapper to initialize Supabase clients
+--
+--   2. As Vault secrets (via `vault.create_secret`)
+--      → used by _internal_call_edge_function to make authenticated HTTP calls
+--        from inside the database via pg_net
+--
+-- Without these, edge functions can't initialize clients and database functions
+-- can't call edge functions.
+--
+-- =============================================================================
+-- WHY host.docker.internal INSTEAD OF 127.0.0.1
+-- =============================================================================
+--
+-- Postgres runs inside a Docker container. When _internal_call_edge_function
+-- uses pg_net to make HTTP calls, 127.0.0.1 resolves to the container itself
+-- — not the host machine where the Edge Functions runtime is listening.
+--
+-- `host.docker.internal` is the standard Docker hostname that resolves to the
+-- host machine, so pg_net calls reach the local Supabase instance correctly.
+--
+-- This ONLY affects the Vault secret used by _internal_call_edge_function.
+-- The CLI and client-side code still use http://127.0.0.1:54321 as usual.
+--
+-- =============================================================================
+-- HOW TO USE
+-- =============================================================================
+--
+-- 1. Get your local keys by running: supabase status
+-- 2. Replace the placeholder values below with your actual keys
+-- 3. Append this block to your project's supabase/seed.sql
+--    (the file may already contain other seed data — don't overwrite it)
+--
+-- =============================================================================
+
+select vault.create_secret('http://host.docker.internal:54321', 'SUPABASE_URL');
+select vault.create_secret('sb_publishable_...', 'SB_PUBLISHABLE_KEY');
+select vault.create_secret('sb_secret_...', 'SB_SECRET_KEY');

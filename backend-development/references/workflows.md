@@ -52,67 +52,46 @@ The three functions and their purposes:
 
 ### 4. Store Missing Vault Secrets
 
-If any secret in the `secrets` object is `false`, the values need to be stored in Vault.
+If any secret in the `secrets` object is `false`, the values need to be stored in Vault. See [`assets/seed.sql`](../assets/seed.sql) for the full explanation of why these secrets are needed and important local development notes.
 
-**Required secrets:**
+**Required secrets:** `SUPABASE_URL`, `SB_PUBLISHABLE_KEY`, `SB_SECRET_KEY`
 
-| Secret Name | Production Value | Local Dev Value | Source |
-|-------------|-----------------|-----------------|--------|
-| `SUPABASE_URL` | `https://abc.supabase.co` | `http://host.docker.internal:54321` | Dashboard > Settings > API |
-| `SB_PUBLISHABLE_KEY` | Publishable (anon) API key | Same key from local config | `supabase status` or Dashboard |
-| `SB_SECRET_KEY` | Secret (service role) API key | Same key from local config | `supabase status` or Dashboard |
-
-> **⚠️ Local development (supabase start):** `SUPABASE_URL` in Vault must use `http://host.docker.internal:54321`, **not** `http://127.0.0.1:54321`. Postgres runs inside a Docker container — `127.0.0.1` resolves to the container itself, so `pg_net` HTTP calls will fail with "Couldn't connect to server". `host.docker.internal` is the standard Docker hostname that resolves to the host machine. This only affects the Vault secret used by `_internal_call_edge_function`; the CLI and client-side code still use `http://127.0.0.1:54321` as usual.
+Get the values from `supabase status` (local) or the Supabase Dashboard (production).
 
 **Path A — Agent creates secrets via `execute_sql`:**
 
-Ask the user for the missing values. If running locally (`supabase start`), use `http://host.docker.internal:54321` for `SUPABASE_URL`. Then run for each:
+Ask the user for the missing values, then run for each:
 
 ```sql
 SELECT vault.create_secret('<value>', '<secret_name>');
 ```
 
-Example for production:
-
-```sql
-SELECT vault.create_secret('https://your-project.supabase.co', 'SUPABASE_URL');
-SELECT vault.create_secret('sb_publishable_...', 'SB_PUBLISHABLE_KEY');
-SELECT vault.create_secret('sb_secret_...', 'SB_SECRET_KEY');
-```
-
-Example for local development:
-
-```sql
-SELECT vault.create_secret('http://host.docker.internal:54321', 'SUPABASE_URL');
-SELECT vault.create_secret('sb_publishable_...', 'SB_PUBLISHABLE_KEY');
-SELECT vault.create_secret('sb_secret_...', 'SB_SECRET_KEY');
-```
-
 **Path B — User runs the script manually:**
 
-If `execute_sql` is not available, point the user to the setup script:
-
 ```bash
-# Production
 ./scripts/setup_vault_secrets.sh \
-  --url "https://your-project.supabase.co" \
-  --publishable-key "sb_publishable_..." \
-  --secret-key "sb_secret_..."
-
-# Local development — note the Docker-internal URL
-./scripts/setup_vault_secrets.sh \
-  --url "http://host.docker.internal:54321" \
+  --url "<SUPABASE_URL>" \
   --publishable-key "sb_publishable_..." \
   --secret-key "sb_secret_..."
 ```
 
 The script handles upserts — it will update existing secrets if they already exist.
 
-### 5. Re-run the Check
+### 5. Add Vault Secrets to Seed File
+
+Vault secrets are wiped on every `supabase db reset` because the database is fully recreated. To persist them, append the vault secret SQL to the project's `supabase/seed.sql` (the CLI runs this file automatically after every reset).
+
+1. Load [`assets/seed.sql`](../assets/seed.sql) — it contains the template with placeholder values
+2. Replace the placeholders with the user's actual local keys (from `supabase status`)
+3. Append the content to the project's `supabase/seed.sql` — the file may already exist with other seed data, so do not overwrite it
+
+This is for local development only. Production secrets are managed through the Supabase Dashboard.
+
+### 6. Re-run the Check
 
 Run `assets/check_setup.sql` again via `execute_sql` and confirm `"ready": true` before proceeding to Phase 1.
 
-### 6. Scaffold Schema Structure (if needed)
+### 7. Scaffold Schema Structure (if needed)
 
 If `supabase/schemas/` doesn't exist yet, run the scaffold script:
 

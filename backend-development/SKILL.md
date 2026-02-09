@@ -43,25 +43,11 @@ CREATE EXTENSION IF NOT EXISTS supabase_vault;
 
 **3. Missing internal functions** — Copy [`assets/setup.sql`](./assets/setup.sql) functions into the project's `supabase/schemas/50_functions/_internal/` schema files, then apply via `apply_migration`.
 
-**4. Missing Vault secrets** — Two paths depending on agent capabilities:
+**4. Missing Vault secrets** — See [`assets/seed.sql`](./assets/seed.sql) for the full template and explanation of why these secrets are needed. Store secrets via `execute_sql` (`SELECT vault.create_secret('<value>', '<secret_name>')`) or the fallback script (`./scripts/setup_vault_secrets.sh`). Required names: `SUPABASE_URL`, `SB_PUBLISHABLE_KEY`, `SB_SECRET_KEY`.
 
-- **Agent path (preferred):** If you have `execute_sql`, ask the user for their project URL, publishable key, and secret key. Then for each missing secret run:
-  ```sql
-  SELECT vault.create_secret('<value>', '<secret_name>');
-  ```
-  Use these exact secret names: `SUPABASE_URL`, `SB_PUBLISHABLE_KEY`, `SB_SECRET_KEY`.
+**5. Persist secrets for `db reset`** — Vault secrets are wiped on every `supabase db reset`. Append the vault secret SQL from [`assets/seed.sql`](./assets/seed.sql) (with the user's actual local values) to the project's `supabase/seed.sql` so they are repopulated automatically. The file may already contain other seed data — append, don't overwrite.
 
-- **Manual path (fallback):** If you cannot run SQL directly, point the user to the setup script:
-  ```bash
-  ./scripts/setup_vault_secrets.sh \
-    --url "https://your-project.supabase.co" \
-    --publishable-key "sb_publishable_..." \
-    --secret-key "sb_secret_..."
-  ```
-
-> **⚠️ Local development (supabase start):** `SUPABASE_URL` must use the Docker-internal hostname, **not** `http://127.0.0.1:54321`. From inside the Postgres container, `127.0.0.1` refers to the container itself. Use `http://host.docker.internal:54321` instead. This only applies to the Vault secret used by `_internal_call_edge_function`; the CLI and client-side code still use `http://127.0.0.1:54321`.
-
-**5. Re-run the check** to confirm `"ready": true` before proceeding.
+**6. Re-run the check** to confirm `"ready": true` before proceeding.
 
 > **📝 Load [Initial Project Setup](./references/workflows.md#initial-project-setup) for the detailed step-by-step workflow.**
 
@@ -128,6 +114,7 @@ Load these as needed during development:
 
 - **[🔍 Setup Check](./assets/check_setup.sql)** — Verify extensions, functions, and secrets exist
 - **[⚙️ Setup Guide](./assets/setup.sql)** — Internal utility function definitions
+- **[🌱 Seed Template](./assets/seed.sql)** — Vault secrets for local dev (append to `supabase/seed.sql`)
 - **[🔐 Vault Secrets Script](./scripts/setup_vault_secrets.sh)** — Store secrets in Vault (manual fallback)
 
 ### Workflows

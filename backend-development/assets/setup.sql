@@ -7,15 +7,9 @@
 -- Before applying these functions, ensure Phase 0 (Setup Verification) passes:
 --   1. Run check_setup.sql via execute_sql to see what's missing.
 --   2. Extensions must be enabled: pg_net, supabase_vault.
---   3. Vault secrets must be stored (use setup_vault_secrets.sh or execute_sql):
---        SELECT vault.create_secret('<value>', 'SUPABASE_URL');
---        SELECT vault.create_secret('<value>', 'SB_PUBLISHABLE_KEY');
---        SELECT vault.create_secret('<value>', 'SB_SECRET_KEY');
---
--- IMPORTANT — Local dev (supabase start):
---   SUPABASE_URL must be 'http://host.docker.internal:54321', NOT
---   'http://127.0.0.1:54321'. Postgres runs inside Docker, so 127.0.0.1
---   resolves to the container itself and pg_net calls will fail.
+--   3. Vault secrets must be stored. See assets/seed.sql for the full template
+--      and explanation. Append its content to supabase/seed.sql so secrets
+--      persist across `supabase db reset`.
 --
 -- See SKILL.md Phase 0 for the full verification flow.
 -- =============================================================================
