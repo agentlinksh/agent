@@ -120,7 +120,7 @@ import { buildPrompt } from "../_ai/prompts.ts";
 import { callOpenAI } from "../_ai/openai.ts";
 
 Deno.serve(
-  withSupabase({ role: "auth" }, async (req, ctx) => {
+  withSupabase({ key: "user" }, async (req, ctx) => {
     const { document_id } = await req.json();
 
     const { data: doc, error } = await ctx.client.rpc("document_get_by_id", {
@@ -131,7 +131,7 @@ Deno.serve(
 
     const summary = await callOpenAI(buildPrompt("summarize", doc.content));
 
-    const { error: updateError } = await ctx.adminClient.rpc(
+    const { error: updateError } = await ctx.serviceClient.rpc(
       "document_update_summary",
       { p_document_id: document_id, p_summary: summary }
     );

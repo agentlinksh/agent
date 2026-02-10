@@ -1,16 +1,16 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
-export type Role = "anon" | "auth" | "admin";
+export type Key = "public" | "user" | "private";
 
 export interface WithSupabaseConfig {
-  role: Role;
+  key: Key;
 }
 
 export interface SupabaseContext {
   /** The original request object */
   req: Request;
 
-  /** User object — available when role is 'auth' */
+  /** User object — available when key is 'user' */
   user?: {
     id: string;
     email?: string;
@@ -18,18 +18,18 @@ export interface SupabaseContext {
     [key: string]: unknown;
   };
 
-  /** Raw JWT claims — available when role is 'auth' */
+  /** Raw JWT claims — available when key is 'user' */
   claims?: Record<string, unknown>;
 
   /**
    * Supabase client that respects RLS — always available.
-   * - 'auth' role: user-scoped (carries the caller's JWT)
-   * - 'anon'/'admin' role: anon client (publishable key, no user context)
+   * - 'user' key: user-scoped (carries the caller's JWT)
+   * - 'public'/'private' key: public client (publishable key, no user context)
    */
   client: SupabaseClient;
 
   /** Service role Supabase client (bypasses RLS) — always available */
-  adminClient: SupabaseClient;
+  serviceClient: SupabaseClient;
 }
 
 export type SupabaseHandler = (

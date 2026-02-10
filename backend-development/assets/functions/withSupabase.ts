@@ -1,10 +1,10 @@
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "./cors.ts";
 
-type Role = "anon" | "auth" | "admin";
+type Key = "public" | "user" | "private";
 
 interface WithSupabaseConfig {
-  role: Role;
+  key: Key;
 }
 
 interface SupabaseContext {
@@ -12,7 +12,7 @@ interface SupabaseContext {
   user?: Record<string, unknown>;
   claims?: Record<string, unknown>;
   client: SupabaseClient;
-  adminClient: SupabaseClient;
+  serviceClient: SupabaseClient;
 }
 
 type Handler = (req: Request, ctx: SupabaseContext) => Promise<Response>;
@@ -40,25 +40,25 @@ function getKeys() {
 /**
  * Wraps an Edge Function handler with Supabase context.
  *
- * Provides two clients on every role:
- * - client:      respects RLS (user-scoped for 'auth', anon for 'anon'/'admin')
- * - adminClient: bypasses RLS (service role, use deliberately)
+ * Provides two clients on every key type:
+ * - client:      respects RLS (user-scoped for 'user', public for 'public'/'private')
+ * - serviceClient: bypasses RLS (service role, use deliberately)
  *
- * Roles:
- * - 'anon'  → No auth required. Use for webhooks, public endpoints.
- * - 'auth'  → Validates JWT. Provides user, claims, and user-scoped client.
- * - 'admin' → Validates secret key via apikey header.
+ * Keys:
+ * - 'public'    → No auth required. Use for webhooks, public endpoints.
+ * - 'user'    → Validates JWT. Provides user, claims, and user-scoped client.
+ * - 'private' → Validates secret key via apikey header.
  */
 export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
   const { supabaseUrl, publishableKey, secretKey } = getKeys();
 
-  // Anon client — reused across requests, respects RLS (no user context)
+  // Public client — reused across requests, respects RLS (no user context)
   const anonClient = createClient(supabaseUrl, publishableKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Admin client — reused across requests, bypasses RLS
-  const adminClient = createClient(supabaseUrl, secretKey, {
+  // Private client — reused across requests, bypasses RLS
+  const serviceClient = createClient(supabaseUrl, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
@@ -69,10 +69,10 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
     }
 
     try {
-      // Default client is the anon client — overridden for 'auth' role below
-      const ctx: SupabaseContext = { req, client: anonClient, adminClient };
+      // Default client uses the public key — overridden for 'user' key below
+      const ctx: SupabaseContext = { req, client: anonClient, serviceClient };
 
-      if (config.role === "auth") {
+      if (config.key === "user") {
         // Validate user JWT
         const authHeader = req.headers.get("Authorization");
         if (!authHeader) {
@@ -100,13 +100,13 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
           ...data.claims,
         };
 
-        // User-scoped client — respects RLS with the caller's identity
+        // User-scoped client — carries the caller's JWT, RLS filters by identity
         ctx.client = createClient(supabaseUrl, publishableKey, {
           global: { headers: { Authorization: authHeader } },
         });
       }
 
-      if (config.role === "admin") {
+      if (config.key === "private") {
         // Validate that the caller is using the secret key via apikey header
         const apikey = req.headers.get("apikey");
         if (!apikey) {
