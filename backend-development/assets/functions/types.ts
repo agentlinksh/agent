@@ -3,7 +3,7 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 export type Key = "public" | "user" | "private";
 
 export interface WithSupabaseConfig {
-  key: Key;
+  key: Key | Key[];
 }
 
 export interface SupabaseContext {

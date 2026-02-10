@@ -4,7 +4,7 @@ import { corsHeaders } from "./cors.ts";
 type Key = "public" | "user" | "private";
 
 interface WithSupabaseConfig {
-  key: Key;
+  key: Key | Key[];
 }
 
 interface SupabaseContext {
@@ -41,13 +41,16 @@ function getKeys() {
  * Wraps an Edge Function handler with Supabase context.
  *
  * Provides two clients on every key type:
- * - client:      respects RLS (user-scoped for 'user', public for 'public'/'private')
+ * - client:        respects RLS (user-scoped for 'user', public for 'public'/'private')
  * - serviceClient: bypasses RLS (service role, use deliberately)
  *
- * Keys:
- * - 'public'    → No auth required. Use for webhooks, public endpoints.
+ * Keys (single or array for dual-auth):
+ * - 'public'  → No auth required. Use for webhooks, public endpoints.
  * - 'user'    → Validates JWT. Provides user, claims, and user-scoped client.
  * - 'private' → Validates secret key via apikey header.
+ *
+ * Array keys try each type in order — first match wins:
+ * - ["user", "private"] → accepts either user JWT or secret key
  */
 export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
   const { supabaseUrl, publishableKey, secretKey } = getKeys();
@@ -57,10 +60,12 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Private client — reused across requests, bypasses RLS
+  // Service client — reused across requests, bypasses RLS
   const serviceClient = createClient(supabaseUrl, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  const keys = Array.isArray(config.key) ? config.key : [config.key];
 
   return async (req: Request): Promise<Response> => {
     // Handle CORS preflight
@@ -69,59 +74,54 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
     }
 
     try {
-      // Default client uses the public key — overridden for 'user' key below
+      // Default client uses the public key — overridden if 'user' auth succeeds
       const ctx: SupabaseContext = { req, client: anonClient, serviceClient };
 
-      if (config.key === "user") {
-        // Validate user JWT
-        const authHeader = req.headers.get("Authorization");
-        if (!authHeader) {
-          return Response.json(
-            { error: "Missing Authorization header" },
-            { status: 401, headers: corsHeaders },
-          );
-        }
-
-        const token = authHeader.replace("Bearer ", "");
-        const { data, error } = await anonClient.auth.getClaims(token);
-
-        if (error || !data?.claims) {
-          return Response.json(
-            { error: "Invalid or expired token" },
-            { status: 401, headers: corsHeaders },
-          );
-        }
-
-        ctx.claims = data.claims;
-        ctx.user = {
-          id: data.claims.sub,
-          email: data.claims.email,
-          role: data.claims.role,
-          ...data.claims,
-        };
-
-        // User-scoped client — carries the caller's JWT, RLS filters by identity
-        ctx.client = createClient(supabaseUrl, publishableKey, {
-          global: { headers: { Authorization: authHeader } },
-        });
+      // 'public' key — no auth needed, always passes
+      if (keys.includes("public")) {
+        return await handler(req, ctx);
       }
 
-      if (config.key === "private") {
-        // Validate that the caller is using the secret key via apikey header
-        const apikey = req.headers.get("apikey");
-        if (!apikey) {
-          return Response.json(
-            { error: "Missing apikey header" },
-            { status: 401, headers: corsHeaders },
-          );
-        }
+      // Try each key type in order — first successful auth wins
+      let authenticated = false;
 
-        if (apikey !== secretKey) {
-          return Response.json(
-            { error: "Unauthorized: requires secret key" },
-            { status: 403, headers: corsHeaders },
-          );
+      if (keys.includes("user")) {
+        const authHeader = req.headers.get("Authorization");
+        if (authHeader) {
+          const token = authHeader.replace("Bearer ", "");
+          const { data, error } = await anonClient.auth.getClaims(token);
+
+          if (!error && data?.claims) {
+            ctx.claims = data.claims;
+            ctx.user = {
+              id: data.claims.sub,
+              email: data.claims.email,
+              role: data.claims.role,
+              ...data.claims,
+            };
+
+            // User-scoped client — carries the caller's JWT, RLS filters by identity
+            ctx.client = createClient(supabaseUrl, publishableKey, {
+              global: { headers: { Authorization: authHeader } },
+            });
+
+            authenticated = true;
+          }
         }
+      }
+
+      if (!authenticated && keys.includes("private")) {
+        const apikey = req.headers.get("apikey");
+        if (apikey && apikey === secretKey) {
+          authenticated = true;
+        }
+      }
+
+      if (!authenticated) {
+        return Response.json(
+          { error: "Unauthorized" },
+          { status: 401, headers: corsHeaders },
+        );
       }
 
       return await handler(req, ctx);

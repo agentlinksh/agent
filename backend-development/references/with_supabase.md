@@ -112,6 +112,37 @@ Deno.serve(
 );
 ```
 
+### Array Keys — Dual-Auth Functions
+
+Some functions are called from multiple contexts — e.g., by a logged-in user from the app AND by another edge function using the secret key. Pass an array to accept multiple key types:
+
+```typescript
+// Called by users (JWT) and by admin-regenerate (secret key)
+Deno.serve(
+  withSupabase({ key: ["user", "private"] }, async (req, ctx) => {
+    // ctx.user exists → called by a logged-in user (JWT auth succeeded)
+    // ctx.user is undefined → called with secret key (internal/service)
+    const userId = ctx.user?.id ?? (await req.json()).user_id;
+
+    const { data, error } = await ctx.serviceClient.rpc("birth_chart_generate", {
+      p_user_id: userId,
+    });
+
+    if (error) return errorResponse(error.message);
+    return jsonResponse(data);
+  })
+);
+```
+
+**How it works:**
+- The wrapper tries each key type in order — first successful auth wins
+- If `user` succeeds: `ctx.user`, `ctx.claims`, and user-scoped `ctx.client` are set
+- If `private` succeeds: `ctx.user` is `undefined`, `ctx.client` is the public client
+- If none succeed: returns 401
+- If the array includes `public`: no auth is required (short-circuits)
+
+**Use `ctx.user` to detect the auth method** in the handler — this is the idiomatic way to branch logic based on how the function was called.
+
 ---
 
 ## Key Selection Guide
@@ -125,8 +156,9 @@ Deno.serve(
 | Cron job / scheduled function | `private` | No user context; needs secret key validation |
 | Called from another edge function | `private` | Internal service-to-service; uses secret key |
 | Called from DB via `_internal_call_edge_function` | `private` | DB calls with secret key |
+| Called by users AND by other edge functions | `["user", "private"]` | Dual-auth — accepts either credential |
 
-**When in doubt:** if there's a logged-in user, use `user`. If it's an external service, use `public`. If it's internal infrastructure, use `private`.
+**When in doubt:** if there's a logged-in user, use `user`. If it's an external service, use `public`. If it's internal infrastructure, use `private`. If it's called from multiple contexts, use an array.
 
 ---
 
@@ -202,7 +234,7 @@ Deno.serve(
   })
 );
 
-// ✅ CORRECT — use none, validate the webhook signature yourself
+// ✅ CORRECT — use public, validate the webhook signature yourself
 Deno.serve(
   withSupabase({ key: "public" }, async (req, ctx) => {
     const signature = req.headers.get("stripe-signature");
@@ -247,3 +279,4 @@ The wrapper handles:
 - Secret key validation for `private` key
 - User-scoped client creation with the caller's JWT for `user` key
 - Public client for `public` and `private` keys
+- Array keys for dual-auth — tries each type in order, first match wins
