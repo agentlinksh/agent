@@ -13,7 +13,7 @@ supabase/functions/
 ├── _shared/                    # Global shared utilities
 │   ├── withSupabase.ts         # Context wrapper (core utility)
 │   ├── cors.ts                 # CORS headers
-│   ├── errors.ts               # Error response helpers
+│   ├── responses.ts            # Response helpers
 │   └── types.ts                # Shared TypeScript types
 ├── _feature-name/              # Feature-specific shared modules
 │   ├── someHelper.ts           # Shared logic for this feature
@@ -34,7 +34,7 @@ Ready-to-use shared utility files are provided as assets in this skill:
 assets/functions/
 ├── withSupabase.ts    # Context wrapper
 ├── cors.ts            # CORS headers
-├── errors.ts          # Error/response helpers
+├── responses.ts       # Response helpers
 └── types.ts           # TypeScript types
 ```
 
@@ -87,12 +87,12 @@ The `withSupabase` wrapper already handles `OPTIONS` preflight requests automati
 
 ---
 
-## Error Helpers
+## Response Helpers
 
-See `assets/functions/errors.ts` — copy it to `supabase/functions/_shared/errors.ts` in the project. Utilities:
+See `assets/functions/responses.ts` — copy it to `supabase/functions/_shared/responses.ts` in the project. Utilities:
 
 ```typescript
-import { jsonResponse, errorResponse, notFound } from "../_shared/errors.ts";
+import { jsonResponse, errorResponse, notFound } from "../_shared/responses.ts";
 
 // Success
 return jsonResponse({ id: "123", name: "test" });
@@ -115,7 +115,7 @@ For logic shared across related functions, use a `_feature-name/` directory:
 ```typescript
 // supabase/functions/generate-summary/index.ts
 import { withSupabase } from "../_shared/withSupabase.ts";
-import { jsonResponse, errorResponse } from "../_shared/errors.ts";
+import { jsonResponse, errorResponse } from "../_shared/responses.ts";
 import { buildPrompt } from "../_ai/prompts.ts";
 import { callOpenAI } from "../_ai/openai.ts";
 
