@@ -1,10 +1,10 @@
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "./cors.ts";
 
-type Key = "public" | "user" | "private";
+type Allow = "public" | "user" | "private";
 
 interface WithSupabaseConfig {
-  key: Key | Key[];
+  allow: Allow | Allow[];
 }
 
 interface SupabaseContext {
@@ -40,16 +40,16 @@ function getKeys() {
 /**
  * Wraps an Edge Function handler with Supabase context.
  *
- * Provides two clients on every key type:
+ * Provides two clients:
  * - client:        respects RLS (user-scoped for 'user', public for 'public'/'private')
  * - serviceClient: bypasses RLS (service role, use deliberately)
  *
- * Keys (single or array for dual-auth):
+ * Allow (single or array for dual-auth):
  * - 'public'  → No auth required. Use for webhooks, public endpoints.
  * - 'user'    → Validates JWT. Provides user, claims, and user-scoped client.
  * - 'private' → Validates secret key via apikey header.
  *
- * Array keys try each type in order — first match wins:
+ * Array tries each type in order — first match wins:
  * - ["user", "private"] → accepts either user JWT or secret key
  */
 export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
@@ -65,7 +65,7 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const keys = Array.isArray(config.key) ? config.key : [config.key];
+  const allowed = Array.isArray(config.allow) ? config.allow : [config.allow];
 
   return async (req: Request): Promise<Response> => {
     // Handle CORS preflight
@@ -77,15 +77,15 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
       // Default client uses the public key — overridden if 'user' auth succeeds
       const ctx: SupabaseContext = { req, client: anonClient, serviceClient };
 
-      // 'public' key — no auth needed, always passes
-      if (keys.includes("public")) {
+      // 'public' — no auth needed, always passes
+      if (allowed.includes("public")) {
         return await handler(req, ctx);
       }
 
-      // Try each key type in order — first successful auth wins
+      // Try each type in order — first successful auth wins
       let authenticated = false;
 
-      if (keys.includes("user")) {
+      if (allowed.includes("user")) {
         const authHeader = req.headers.get("Authorization");
         if (authHeader) {
           const token = authHeader.replace("Bearer ", "");
@@ -110,7 +110,7 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
         }
       }
 
-      if (!authenticated && keys.includes("private")) {
+      if (!authenticated && allowed.includes("private")) {
         const apikey = req.headers.get("apikey");
         if (apikey && apikey === secretKey) {
           authenticated = true;

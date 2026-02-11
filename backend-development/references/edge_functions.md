@@ -120,7 +120,7 @@ import { buildPrompt } from "../_ai/prompts.ts";
 import { callOpenAI } from "../_ai/openai.ts";
 
 Deno.serve(
-  withSupabase({ key: "user" }, async (req, ctx) => {
+  withSupabase({ allow: "user" }, async (req, ctx) => {
     const { document_id } = await req.json();
 
     const { data: doc, error } = await ctx.client.rpc("document_get_by_id", {

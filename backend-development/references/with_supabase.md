@@ -1,6 +1,6 @@
 # withSupabase Wrapper
 
-The `withSupabase` wrapper is the **only** way to initialize Supabase clients in Edge Functions. It provides two clients, handles CORS preflight, and enforces authentication based on the function's key type.
+The `withSupabase` wrapper is the **only** way to initialize Supabase clients in Edge Functions. It provides two clients, handles CORS preflight, and enforces authorization based on the function's `allow` config.
 
 ---
 
@@ -14,17 +14,17 @@ The `withSupabase` wrapper is the **only** way to initialize Supabase clients in
 
 ## Clients
 
-Both clients are **always available** on every key type:
+Both clients are **always available** regardless of `allow` type:
 
 | Client | Behavior | Use for |
 |--------|----------|---------|
 | `ctx.client` | Respects RLS | Default choice. User data operations, queries that should be scoped by policies. |
 | `ctx.serviceClient` | Bypasses RLS | Service-level operations that need full access. Use deliberately. |
 
-How `ctx.client` is initialized depends on the key:
+How `ctx.client` is initialized depends on `allow`:
 
-| Key | `ctx.client` is... |
-|-----|---------------------|
+| Allow | `ctx.client` is... |
+|-------|---------------------|
 | `user` | User-scoped — carries the caller's JWT, so RLS filters by user identity |
 | `public` | Public — publishable key, no JWT. RLS `anon` role policies apply |
 | `private` | Public — publishable key, no JWT. RLS `anon` role policies apply |
@@ -33,7 +33,7 @@ How `ctx.client` is initialized depends on the key:
 
 ---
 
-## Key Types
+## Allow Types
 
 ### `user` — User-Facing Functions
 
@@ -43,7 +43,7 @@ For functions called from the app by a logged-in user. The wrapper validates the
 
 ```typescript
 Deno.serve(
-  withSupabase({ key: "user" }, async (_req, ctx) => {
+  withSupabase({ allow: "user" }, async (_req, ctx) => {
     // ctx.user.id, ctx.user.email — user identity
     // ctx.client — queries scoped to this user via RLS
     const { data, error } = await ctx.client.rpc("profile_get_by_user");
@@ -70,7 +70,7 @@ No auth enforcement — the request passes through to the handler.
 ```typescript
 // Stripe webhook — validates its own signature, uses serviceClient for DB writes
 Deno.serve(
-  withSupabase({ key: "public" }, async (req, ctx) => {
+  withSupabase({ allow: "public" }, async (req, ctx) => {
     const signature = req.headers.get("stripe-signature");
     if (!signature) return errorResponse("Missing signature", 401);
 
@@ -101,7 +101,7 @@ Use this for:
 ```typescript
 // Cron job — only callable with the secret key
 Deno.serve(
-  withSupabase({ key: "private" }, async (_req, ctx) => {
+  withSupabase({ allow: "private" }, async (_req, ctx) => {
     const { data, error } = await ctx.serviceClient.rpc(
       "cleanup_expired_sessions"
     );
@@ -112,14 +112,14 @@ Deno.serve(
 );
 ```
 
-### Array Keys — Dual-Auth Functions
+### Array — Dual-Auth Functions
 
-Some functions are called from multiple contexts — e.g., by a logged-in user from the app AND by another edge function using the secret key. Pass an array to accept multiple key types:
+Some functions are called from multiple contexts — e.g., by a logged-in user from the app AND by another edge function using the secret key. Pass an array to accept multiple types:
 
 ```typescript
 // Called by users (JWT) and by admin-regenerate (secret key)
 Deno.serve(
-  withSupabase({ key: ["user", "private"] }, async (req, ctx) => {
+  withSupabase({ allow: ["user", "private"] }, async (req, ctx) => {
     // ctx.user exists → called by a logged-in user (JWT auth succeeded)
     // ctx.user is undefined → called with secret key (internal/service)
     const userId = ctx.user?.id ?? (await req.json()).user_id;
@@ -135,7 +135,7 @@ Deno.serve(
 ```
 
 **How it works:**
-- The wrapper tries each key type in order — first successful auth wins
+- The wrapper tries each type in order — first successful auth wins
 - If `user` succeeds: `ctx.user`, `ctx.claims`, and user-scoped `ctx.client` are set
 - If `private` succeeds: `ctx.user` is `undefined`, `ctx.client` is the public client
 - If none succeed: returns 401
@@ -145,10 +145,10 @@ Deno.serve(
 
 ---
 
-## Key Selection Guide
+## Selection Guide
 
-| Scenario | Key | Why |
-|----------|-----|-----|
+| Scenario | Allow | Why |
+|----------|-------|-----|
 | User clicks a button in the app | `user` | Need user identity + RLS-scoped queries |
 | External webhook (Stripe, GitHub) | `public` | No Supabase JWT; validate webhook signature yourself |
 | Supabase Auth Hook | `public` | Called by Supabase Auth, not a user session |
@@ -173,7 +173,7 @@ Every function using `withSupabase` must disable built-in JWT verification since
 verify_jwt = false
 ```
 
-This is **required** for `public` and `private` keys (they don't send a Supabase JWT), and **required** for `user` key because the wrapper validates tokens using the newer `getClaims` pattern.
+This is **required** for `public` and `private` (they don't send a Supabase JWT), and **required** for `user` because the wrapper validates tokens using the newer `getClaims` pattern.
 
 ---
 
@@ -184,7 +184,7 @@ This is **required** for `public` and `private` keys (they don't send a Supabase
 ```typescript
 // ❌ WRONG — manual client creation inside the handler
 Deno.serve(
-  withSupabase({ key: "user" }, async (req, ctx) => {
+  withSupabase({ allow: "user" }, async (req, ctx) => {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SB_PUBLISHABLE_KEY")!
@@ -196,7 +196,7 @@ Deno.serve(
 
 // ✅ CORRECT — use ctx.client
 Deno.serve(
-  withSupabase({ key: "user" }, async (_req, ctx) => {
+  withSupabase({ allow: "user" }, async (_req, ctx) => {
     const { data } = await ctx.client.rpc("some_function");
     // ...
   })
@@ -208,7 +208,7 @@ Deno.serve(
 ```typescript
 // ❌ WRONG — bypasses RLS unnecessarily
 Deno.serve(
-  withSupabase({ key: "user" }, async (_req, ctx) => {
+  withSupabase({ allow: "user" }, async (_req, ctx) => {
     const { data } = await ctx.serviceClient.rpc("profile_get_by_user");
     // ...
   })
@@ -216,19 +216,19 @@ Deno.serve(
 
 // ✅ CORRECT — let RLS scope the query to the user
 Deno.serve(
-  withSupabase({ key: "user" }, async (_req, ctx) => {
+  withSupabase({ allow: "user" }, async (_req, ctx) => {
     const { data } = await ctx.client.rpc("profile_get_by_user");
     // ...
   })
 );
 ```
 
-### Using `user` key for a webhook
+### Using `user` for a webhook
 
 ```typescript
 // ❌ WRONG — Stripe doesn't send a Supabase JWT, this will always 401
 Deno.serve(
-  withSupabase({ key: "user" }, async (req, ctx) => {
+  withSupabase({ allow: "user" }, async (req, ctx) => {
     const signature = req.headers.get("stripe-signature");
     // ...
   })
@@ -236,7 +236,7 @@ Deno.serve(
 
 // ✅ CORRECT — use public, validate the webhook signature yourself
 Deno.serve(
-  withSupabase({ key: "public" }, async (req, ctx) => {
+  withSupabase({ allow: "public" }, async (req, ctx) => {
     const signature = req.headers.get("stripe-signature");
     if (!signature) return errorResponse("Missing signature", 401);
     // ...
@@ -256,7 +256,7 @@ interface SupabaseContext {
   client: SupabaseClient;       // Respects RLS
   serviceClient: SupabaseClient;  // Bypasses RLS
 
-  // Available when key is 'user'
+  // Available when allow is 'user'
   user?: {
     id: string;
     email?: string;
@@ -273,10 +273,10 @@ The full implementation is provided as an asset file — see `assets/functions/w
 
 The wrapper handles:
 - CORS preflight (`OPTIONS` requests) automatically
-- Key resolution for `SB_PUBLISHABLE_KEY` and `SB_SECRET_KEY`
+- Resolution of `SB_PUBLISHABLE_KEY` and `SB_SECRET_KEY` from environment
 - Clear error messages if secrets are missing
-- JWT validation via `getClaims` for `user` key
-- Secret key validation for `private` key
-- User-scoped client creation with the caller's JWT for `user` key
-- Public client for `public` and `private` keys
-- Array keys for dual-auth — tries each type in order, first match wins
+- JWT validation via `getClaims` for `allow: "user"`
+- Secret key validation for `allow: "private"`
+- User-scoped client creation with the caller's JWT for `allow: "user"`
+- Public client for `allow: "public"` and `allow: "private"`
+- Array allow for dual-auth — tries each type in order, first match wins
