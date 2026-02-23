@@ -2,6 +2,13 @@
 
 Consistent naming across all database objects.
 
+## Contents
+- Tables
+- Columns
+- Functions (common action verbs)
+- Other Objects
+- Schema File Naming
+
 ## Tables
 
 - **Plural**, snake_case

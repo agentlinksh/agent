@@ -2,6 +2,15 @@
 
 The `withSupabase` wrapper is the **only** way to initialize Supabase clients in Edge Functions. It provides two clients, handles CORS preflight, and enforces authorization based on the function's `allow` config.
 
+## Contents
+- Rules
+- Clients
+- Allow Types (user, public, private, array)
+- Selection Guide
+- Function Configuration
+- Anti-Patterns
+- Context Reference
+
 ---
 
 ## Rules

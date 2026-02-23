@@ -2,6 +2,14 @@
 
 RPC-first architecture patterns for Supabase.
 
+## Contents
+- Core Principle
+- Security Context: INVOKER vs DEFINER
+- Function Categories (business logic, auth, internal)
+- RLS Policy Pattern
+- Multi-Table Operations
+- Security Checklist
+
 ## Core Principle
 
 All client data access goes through database functions (RPCs). No direct table queries.

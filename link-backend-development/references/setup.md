@@ -2,11 +2,31 @@
 
 Run once per project to ensure the required infrastructure is in place. This corresponds to **Phase 0** in SKILL.md.
 
+## Contents
+- Verify Supabase MCP
+- Run the Setup Check
+- Enable Missing Extensions
+- Create Missing Internal Functions
+- Store Missing Vault Secrets
+- Add Vault Secrets to Seed File
+- Re-run the Check
+- Scaffold Schema Structure
+
 ---
+
+## 0. Verify Supabase MCP
+
+Confirm the `supabase` MCP server for local development is connected. The skill
+depends on two tools:
+
+- `supabase:execute_sql` — run SQL against the local database
+- `supabase:apply_migration` — apply schema migrations
+
+If the server is not available, the user must configure it before proceeding.
 
 ## 1. Run the Setup Check
 
-Load `assets/check_setup.sql` and execute it via `execute_sql`. The result is a JSON object:
+Load `assets/check_setup.sql` and execute it via `supabase:execute_sql`. The result is a JSON object:
 
 ```json
 {
@@ -28,7 +48,7 @@ CREATE EXTENSION IF NOT EXISTS pg_net;
 CREATE EXTENSION IF NOT EXISTS supabase_vault;
 ```
 
-Use `apply_migration` with a descriptive name like `enable_required_extensions`.
+Use `supabase:apply_migration` with a descriptive name like `enable_required_extensions`.
 
 ## 3. Create Missing Internal Functions
 
@@ -36,7 +56,7 @@ If any function in the `functions` object is `false`:
 
 1. Load `assets/setup.sql` — it contains the full definitions for all three `_internal_*` functions.
 2. Copy the relevant function(s) into the project's `supabase/schemas/50_functions/_internal/` directory.
-3. Apply via `apply_migration`.
+3. Apply via `supabase:apply_migration`.
 
 The three functions and their purposes:
 
@@ -54,7 +74,7 @@ If any secret in the `secrets` object is `false`, the values need to be stored i
 
 Get the values from `supabase status` (local) or the Supabase Dashboard (production).
 
-**Path A — Agent creates secrets via `execute_sql`:**
+**Path A — Agent creates secrets via `supabase:execute_sql`:**
 
 Ask the user for the missing values, then run for each:
 
@@ -85,7 +105,7 @@ This is for local development only. Production secrets are managed through the S
 
 ## 6. Re-run the Check
 
-Run `assets/check_setup.sql` again via `execute_sql` and confirm `"ready": true` before proceeding to Phase 1.
+Run `assets/check_setup.sql` again via `supabase:execute_sql` and confirm `"ready": true` before proceeding to Phase 1.
 
 ## 7. Scaffold Schema Structure (if needed)
 

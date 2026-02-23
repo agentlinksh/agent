@@ -24,82 +24,27 @@ metadata:
 
 Before starting any backend work, verify the project's infrastructure is in place.
 
-**1. Run the check query** — Load [`assets/check_setup.sql`](./assets/check_setup.sql) and execute it via `execute_sql`. It returns a JSON object like:
+**1. Verify Supabase MCP** — Confirm the `supabase` MCP server is connected (the skill
+depends on `supabase:execute_sql` and `supabase:apply_migration`).
 
-```json
-{
-  "extensions": { "pg_net": true, "vault": true },
-  "functions":  { "_internal_get_secret": true, "_internal_call_edge_function": true, "_internal_call_edge_function_sync": true },
-  "secrets":    { "SUPABASE_URL": true, "SB_PUBLISHABLE_KEY": true, "SB_SECRET_KEY": true },
-  "ready": true
-}
-```
+**2. Run the setup check** — Load [`assets/check_setup.sql`](./assets/check_setup.sql) and execute it via
+`supabase:execute_sql`. If `"ready": true` → skip to Phase 1.
 
-If `"ready": true` — skip to Phase 1. Otherwise, fix what's missing:
-
-**2. Missing extensions** — Apply via `apply_migration`:
-
-```sql
-CREATE EXTENSION IF NOT EXISTS pg_net;
--- vault is typically enabled by default; if not:
-CREATE EXTENSION IF NOT EXISTS supabase_vault;
-```
-
-**3. Missing internal functions** — Copy [`assets/setup.sql`](./assets/setup.sql) functions into the project's `supabase/schemas/50_functions/_internal/` schema files, then apply via `apply_migration`.
-
-**4. Missing Vault secrets** — See [`assets/seed.sql`](./assets/seed.sql) for the full template and explanation of why these secrets are needed. Store secrets via `execute_sql` (`SELECT vault.create_secret('<value>', '<secret_name>')`) or the fallback script (`./scripts/setup_vault_secrets.sh`). Required names: `SUPABASE_URL`, `SB_PUBLISHABLE_KEY`, `SB_SECRET_KEY`.
-
-**5. Persist secrets for `db reset`** — Vault secrets are wiped on every `supabase db reset`. Append the vault secret SQL from [`assets/seed.sql`](./assets/seed.sql) (with the user's actual local values) to the project's `supabase/seed.sql` so they are repopulated automatically. The file may already contain other seed data — append, don't overwrite.
-
-**6. Re-run the check** to confirm `"ready": true` before proceeding.
-
-> **📝 Load [Initial Project Setup](./references/setup.md) for the detailed step-by-step workflow.**
+**3. Fix what's missing** — Load [Setup](./references/setup.md) and follow the steps for
+any `false` values (extensions, internal functions, vault secrets, seed file).
 
 ---
 
-### Phase 1: Schema Changes
+### Phases 1-5: Development Loop
 
-Write structural changes to the appropriate schema file based on the folder structure:
+1. **Schema Changes** — Write SQL to the appropriate schema file in `supabase/schemas/`
+2. **Apply & Fix** — Run the same SQL against the live database via `supabase:execute_sql`; fix errors with more SQL
+3. **Generate Types** — Regenerate TypeScript types after each set of changes
+4. **Iterate** — Repeat until the feature is complete
+5. **Migration** — Run `supabase db diff` to capture all changes as a single migration
 
-```
-supabase/schemas/
-├── 10_types/        # Enums, composite types, domains
-├── 20_tables/       # Table definitions
-├── 30_constraints/  # Check constraints, foreign keys
-├── 40_indexes/      # Index definitions
-├── 50_functions/    # RPCs, auth functions, internal utils
-│   ├── _internal/   # Infrastructure utilities
-│   └── _auth/       # RLS policy functions
-├── 60_triggers/     # Trigger definitions
-├── 70_policies/     # RLS policies
-└── 80_views/        # View definitions
-```
-
-Files are organized by entity (e.g., `charts.sql`, `readings.sql`). Numeric prefixes ensure correct application order.
-
-**📋 Load [Naming Conventions](./references/naming_conventions.md) for table, column, and function naming rules.**
-
-### Phase 2: Apply & Fix
-
-1. CLI auto-applies changes (`supabase start`)
-2. Monitor logs for errors (constraint violations, dependencies)
-3. If errors → use `execute_sql` MCP tool for data fixes only (UPDATE, DELETE, INSERT)
-4. Never use `execute_sql` for schema structure — only schema files
-
-### Phase 3: Generate Types
-
-```bash
-supabase gen types typescript --local > src/types/database.ts
-```
-
-### Phase 4: Iterate
-
-Repeat Phases 1-3 until schema is stable and tested.
-
-### Phase 5: Migration
-
-1. Use `supabase db diff` to generate migration
-2. Review migration — patch if manual SQL commands are missing
+> **📝 Load [Development](./references/development.md) for the full workflow, error handling, and examples.**
+> **📋 Load [Naming Conventions](./references/naming_conventions.md) for table, column, and function naming rules.**
 
 ---
 
@@ -137,7 +82,7 @@ Load these as needed during development:
 | Tool           | Purpose                                                                                                       |
 | -------------- | ------------------------------------------------------------------------------------------------------------- |
 | Supabase CLI   | Local development, type generation, migrations                                                                |
-| Supabase MCP   | `execute_sql` tool for data fixes                                                                             |
+| Supabase MCP   | `supabase:execute_sql` tool for data fixes                                                                             |
 | Edge Functions | See [Edge Functions](./references/edge_functions.md) for project structure and [withSupabase](./references/with_supabase.md) for wrapper usage |
 
 ---

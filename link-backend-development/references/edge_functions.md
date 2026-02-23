@@ -4,6 +4,14 @@ Project structure, shared utilities, and setup for Supabase Edge Functions.
 
 Every Edge Function uses the `withSupabase` wrapper. **See [withSupabase Reference](./with_supabase.md) for usage rules, role selection, client patterns, and examples.**
 
+## Contents
+- Folder Structure (setting up shared utilities)
+- Required Secrets
+- Function Configuration (`config.toml`)
+- CORS
+- Response Helpers
+- Feature-Specific Shared Modules
+
 ---
 
 ## Folder Structure

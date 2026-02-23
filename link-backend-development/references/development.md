@@ -2,13 +2,20 @@
 
 The daily development loop. How agents build features, apply changes, and produce migrations.
 
+## Contents
+- Core Principle
+- Development Loop (making changes, fixing errors)
+- Migration Workflow (during development, committing, review, verify)
+- Generating Types
+- Examples (new entity, new field, triggers)
+
 ---
 
 ## Core Principle
 
 The agent applies every change in two places simultaneously:
 
-1. **The live local database** — via MCP `execute_sql`, so changes take effect immediately
+1. **The live local database** — via MCP `supabase:execute_sql`, so changes take effect immediately
 2. **The schema files** — in `supabase/schemas/`, so the source of truth stays in sync
 
 Schema files are the canonical representation of your database. The live database is the working copy. Both must always reflect the same state.
@@ -24,7 +31,7 @@ Schema files are the canonical representation of your database. The live databas
 When building a feature, the agent:
 
 1. Writes the SQL in the appropriate schema file (see naming conventions)
-2. Runs the same SQL against the local database via `execute_sql`
+2. Runs the same SQL against the local database via `supabase:execute_sql`
 3. If something breaks, fixes it with more SQL — never resets
 4. Continues building until the feature is complete
 
@@ -32,7 +39,7 @@ This applies to everything: tables, indexes, functions, policies, triggers. The 
 
 ### Fixing Errors
 
-When `execute_sql` returns an error:
+When `supabase:execute_sql` returns an error:
 
 - **Constraint violation** — Fix the data, then retry the schema change
 - **Duplicate object** — The schema file should already use `IF NOT EXISTS` / `CREATE OR REPLACE`
@@ -65,7 +72,7 @@ Check the generated file in `supabase/migrations/`:
 
 - Verify all changes are captured
 - Confirm the order makes sense (tables before indexes, functions before policies)
-- If any `execute_sql` data fixes are needed for the migration to replay cleanly, add them manually
+- If any `supabase:execute_sql` data fixes are needed for the migration to replay cleanly, add them manually
 
 ### Verify (requires user confirmation)
 
@@ -227,7 +234,7 @@ ON public.readings FOR DELETE
 USING (_auth_reading_is_owner(id));
 ```
 
-**7. Apply everything** — Run each file's SQL via `execute_sql` in order: table → indexes → auth functions → business functions → policies.
+**7. Apply everything** — Run each file's SQL via `supabase:execute_sql` in order: table → indexes → auth functions → business functions → policies.
 
 **8. Generate types:**
 ```bash
@@ -248,7 +255,7 @@ Example: Adding `archived_at` to `readings`.
 archived_at timestamptz DEFAULT NULL
 ```
 
-**2. Apply to live database** via `execute_sql`:
+**2. Apply to live database** via `supabase:execute_sql`:
 ```sql
 ALTER TABLE public.readings ADD COLUMN IF NOT EXISTS archived_at timestamptz DEFAULT NULL;
 ```
@@ -285,7 +292,7 @@ $$;
 
 **5. Fix data errors** if any exist:
 ```sql
--- via execute_sql
+-- via supabase:execute_sql
 UPDATE public.readings SET archived_at = NULL WHERE archived_at = '0001-01-01';
 ```
 
@@ -322,4 +329,4 @@ CREATE TRIGGER trg_readings_updated_at
   EXECUTE FUNCTION _internal_set_updated_at();
 ```
 
-**3. Apply both** via `execute_sql` in order: function first, then trigger.
+**3. Apply both** via `supabase:execute_sql` in order: function first, then trigger.
