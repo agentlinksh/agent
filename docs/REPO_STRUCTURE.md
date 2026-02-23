@@ -25,12 +25,13 @@ agentlinksh/skills/
     │   ├── rpc_patterns.md                # RPC-first architecture, security context
     │   ├── edge_functions.md              # Project structure, shared utilities
     │   ├── with_supabase.md               # Wrapper rules, role selection, client usage
-    │   ├── workflows.md                   # Step-by-step guides for common tasks
-    │   └── entities.md                    # Entity registry template
+    │   ├── setup.md                       # Initial project setup, extensions, vault secrets
+    │   └── development.md                # Development loop, migrations, examples
     ├── scripts/
     │   ├── scaffold_schemas.sh            # Bootstrap schema structure
     │   └── setup_vault_secrets.sh         # Store secrets in Vault
     └── assets/
+        ├── entities.md                    # Entity registry template
         ├── check_setup.sql                # Verify infrastructure is in place
         ├── setup.sql                      # Internal utility function definitions
         ├── seed.sql                       # Vault secrets for local dev
@@ -136,7 +137,8 @@ New domains are added as reference files inside the single skill:
 
 | Domain | Reference File | Status |
 |---|---|---|
-| Core workflow | `workflows.md` | ✅ Built |
+| Setup | `setup.md` | ✅ Built |
+| Development | `development.md` | ✅ Built |
 | Naming conventions | `naming_conventions.md` | ✅ Built |
 | RPC patterns | `rpc_patterns.md` | ✅ Built |
 | Edge functions | `edge_functions.md`, `with_supabase.md` | ✅ Built |

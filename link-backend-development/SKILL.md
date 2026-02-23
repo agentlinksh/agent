@@ -53,7 +53,7 @@ CREATE EXTENSION IF NOT EXISTS supabase_vault;
 
 **6. Re-run the check** to confirm `"ready": true` before proceeding.
 
-> **📝 Load [Initial Project Setup](./references/workflows.md#initial-project-setup) for the detailed step-by-step workflow.**
+> **📝 Load [Initial Project Setup](./references/setup.md) for the detailed step-by-step workflow.**
 
 ---
 
@@ -123,11 +123,12 @@ Load these as needed during development:
 
 ### Workflows
 
-- **[📝 Common Workflows](./references/workflows.md)** — Adding entities, fields, creating RPCs
+- **[🛠️ Setup](./references/setup.md)** — Initial project setup, extensions, vault secrets
+- **[📝 Development](./references/development.md)** — Development loop, migrations, adding entities and fields
 
 ### Entity Tracking
 
-- **[📊 Entity Registry Template](./references/ENTITIES.md)** — Track entities and schema files
+- **[📊 Entity Registry Template](./assets/entities.md)** — Track entities and schema files
 
 ---
 
