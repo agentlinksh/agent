@@ -4,7 +4,7 @@ Custom AI agent skills for my Supabase development workflow. Each skill teaches 
 
 ## Skills
 
-### [supabase-dev-workflow](./supabase-dev-workflow/)
+### [backend-development](./backend-development/)
 
 Local development workflow for Supabase-backed projects. Enforces schema-driven development with an RPC-first architecture — all client data access goes through database functions, never direct table queries.
 
@@ -27,7 +27,7 @@ Local development workflow for Supabase-backed projects. Enforces schema-driven 
 Copy or symlink a skill directory into your assistant's skills location:
 
 ```bash
-cp -r supabase-dev-workflow ~/.cursor/skills/
+cp -r backend-development ~/.cursor/skills/
 ```
 
 Skills activate automatically when the assistant detects a relevant task.
