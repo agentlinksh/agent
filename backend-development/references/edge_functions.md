@@ -69,6 +69,19 @@ supabase secrets set SB_SECRET_KEY=sb_secret_...
 
 ---
 
+## Function Configuration (`config.toml`)
+
+**Every edge function must have `verify_jwt = false` in `supabase/config.toml`.** The `withSupabase` wrapper handles auth itself — it validates JWTs for `allow: "user"` and secret keys for `allow: "private"`. If `verify_jwt` is left as `true` (the default), Supabase's gateway will reject requests before they reach the wrapper, breaking `public` and `private` functions entirely and conflicting with the wrapper's own validation for `user` functions.
+
+When creating a new function, add its entry to `config.toml`:
+
+```toml
+[functions.my-function]
+verify_jwt = false
+```
+
+---
+
 ## CORS
 
 CORS is handled as a separate utility, following the [official Supabase pattern](https://supabase.com/docs/guides/functions/cors). See `assets/functions/cors.ts` — copy it to `supabase/functions/_shared/cors.ts` in the project.
@@ -131,7 +144,7 @@ Deno.serve(
 
     const summary = await callOpenAI(buildPrompt("summarize", doc.content));
 
-    const { error: updateError } = await ctx.serviceClient.rpc(
+    const { error: updateError } = await ctx.adminClient.rpc(
       "document_update_summary",
       { p_document_id: document_id, p_summary: summary }
     );

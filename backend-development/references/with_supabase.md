@@ -7,7 +7,7 @@ The `withSupabase` wrapper is the **only** way to initialize Supabase clients in
 ## Rules
 
 1. **ALWAYS use `withSupabase`** — never call `createClient()` in function code, never parse JWTs manually.
-2. **ALWAYS use `ctx.client` and `ctx.serviceClient`** — they are provided by the wrapper. Never create your own clients.
+2. **ALWAYS use `ctx.client` and `ctx.adminClient`** — they are provided by the wrapper. Never create your own clients.
 3. **ALWAYS set `verify_jwt = false`** in `config.toml` for every function — the wrapper handles auth.
 
 ---
@@ -19,7 +19,7 @@ Both clients are **always available** regardless of `allow` type:
 | Client | Behavior | Use for |
 |--------|----------|---------|
 | `ctx.client` | Respects RLS | Default choice. User data operations, queries that should be scoped by policies. |
-| `ctx.serviceClient` | Bypasses RLS | Service-level operations that need full access. Use deliberately. |
+| `ctx.adminClient` | Bypasses RLS | Service-level operations that need full access. Use deliberately. |
 
 How `ctx.client` is initialized depends on `allow`:
 
@@ -29,7 +29,7 @@ How `ctx.client` is initialized depends on `allow`:
 | `public` | Public — publishable key, no JWT. RLS `anon` role policies apply |
 | `private` | Public — publishable key, no JWT. RLS `anon` role policies apply |
 
-**Default to `ctx.client`.** Reserve `ctx.serviceClient` for operations where the function acts as the system, not on behalf of a user -- e.g., processing webhook payloads, cron jobs, writing to service-only tables. If RLS is blocking a user-facing operation, fix the RLS policy; do not switch to `serviceClient` to work around it.
+**Default to `ctx.client`.** Reserve `ctx.adminClient` for operations where the function acts as the system, not on behalf of a user -- e.g., processing webhook payloads, cron jobs, writing to service-only tables. If RLS is blocking a user-facing operation, fix the RLS policy; do not switch to `adminClient` to work around it.
 
 ---
 
@@ -39,7 +39,7 @@ How `ctx.client` is initialized depends on `allow`:
 
 For functions called from the app by a logged-in user. The wrapper validates the JWT and rejects the request if the user is not authenticated.
 
-**Provides:** `ctx.user`, `ctx.claims`, `ctx.client` (user-scoped), `ctx.serviceClient`
+**Provides:** `ctx.user`, `ctx.claims`, `ctx.client` (user-scoped), `ctx.adminClient`
 
 ```typescript
 Deno.serve(
@@ -65,10 +65,10 @@ For functions that receive no Supabase JWT. Use this for:
 
 No auth enforcement — the request passes through to the handler.
 
-**Provides:** `ctx.client` (public), `ctx.serviceClient`
+**Provides:** `ctx.client` (public), `ctx.adminClient`
 
 ```typescript
-// Stripe webhook — validates its own signature, uses serviceClient for DB writes
+// Stripe webhook — validates its own signature, uses adminClient for DB writes
 Deno.serve(
   withSupabase({ allow: "public" }, async (req, ctx) => {
     const signature = req.headers.get("stripe-signature");
@@ -77,7 +77,7 @@ Deno.serve(
     const body = await req.json();
     // Webhook-specific validation here...
 
-    const { error } = await ctx.serviceClient.rpc("payment_process_webhook", {
+    const { error } = await ctx.adminClient.rpc("payment_process_webhook", {
       p_event: body,
     });
 
@@ -96,13 +96,13 @@ Use this for:
 - Database-triggered calls via `_internal_call_edge_function`
 - Internal service-to-service calls
 
-**Provides:** `ctx.client` (public), `ctx.serviceClient`
+**Provides:** `ctx.client` (public), `ctx.adminClient`
 
 ```typescript
 // Cron job — only callable with the secret key
 Deno.serve(
   withSupabase({ allow: "private" }, async (_req, ctx) => {
-    const { data, error } = await ctx.serviceClient.rpc(
+    const { data, error } = await ctx.adminClient.rpc(
       "cleanup_expired_sessions"
     );
 
@@ -124,7 +124,7 @@ Deno.serve(
     // ctx.user is undefined → called with secret key (internal/service)
     const userId = ctx.user?.id ?? (await req.json()).user_id;
 
-    const { data, error } = await ctx.serviceClient.rpc("birth_chart_generate", {
+    const { data, error } = await ctx.adminClient.rpc("birth_chart_generate", {
       p_user_id: userId,
     });
 
@@ -203,13 +203,13 @@ Deno.serve(
 );
 ```
 
-### Using `serviceClient` when `client` would suffice
+### Using `adminClient` when `client` would suffice
 
 ```typescript
 // ❌ WRONG — bypasses RLS unnecessarily
 Deno.serve(
   withSupabase({ allow: "user" }, async (_req, ctx) => {
-    const { data } = await ctx.serviceClient.rpc("profile_get_by_user");
+    const { data } = await ctx.adminClient.rpc("profile_get_by_user");
     // ...
   })
 );
@@ -254,7 +254,7 @@ interface SupabaseContext {
 
   // Always available
   client: SupabaseClient;       // Respects RLS
-  serviceClient: SupabaseClient;  // Bypasses RLS
+  adminClient: SupabaseClient;  // Bypasses RLS
 
   // Available when allow is 'user'
   user?: {

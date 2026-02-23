@@ -12,7 +12,7 @@ interface SupabaseContext {
   user?: Record<string, unknown>;
   claims?: Record<string, unknown>;
   client: SupabaseClient;
-  serviceClient: SupabaseClient;
+  adminClient: SupabaseClient;
 }
 
 type Handler = (req: Request, ctx: SupabaseContext) => Promise<Response>;
@@ -42,7 +42,7 @@ function getKeys() {
  *
  * Provides two clients:
  * - client:        respects RLS (user-scoped for 'user', public for 'public'/'private')
- * - serviceClient: bypasses RLS (service role, use deliberately)
+ * - adminClient: bypasses RLS (service role, use deliberately)
  *
  * Allow (single or array for dual-auth):
  * - 'public'  → No auth required. Use for webhooks, public endpoints.
@@ -61,7 +61,7 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
   });
 
   // Service client — reused across requests, bypasses RLS
-  const serviceClient = createClient(supabaseUrl, secretKey, {
+  const adminClient = createClient(supabaseUrl, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
@@ -75,7 +75,7 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
 
     try {
       // Default client uses the public key — overridden if 'user' auth succeeds
-      const ctx: SupabaseContext = { req, client: anonClient, serviceClient };
+      const ctx: SupabaseContext = { req, client: anonClient, adminClient };
 
       // 'public' — no auth needed, always passes
       if (allowed.includes("public")) {

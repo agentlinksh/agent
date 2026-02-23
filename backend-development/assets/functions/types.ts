@@ -29,7 +29,7 @@ export interface SupabaseContext {
   client: SupabaseClient;
 
   /** Service role Supabase client (bypasses RLS) — always available */
-  serviceClient: SupabaseClient;
+  adminClient: SupabaseClient;
 }
 
 export type SupabaseHandler = (
