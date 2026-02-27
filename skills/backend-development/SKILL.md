@@ -1,5 +1,5 @@
 ---
-name: link-backend-development
+name: backend-development
 description: Supabase schema-driven development workflow. Use when the task involves creating or modifying database tables, columns, indexes, triggers, migrations, schema files, project setup, or scaffolding a new Supabase project. Also use for database infrastructure like extensions, vault secrets, seed files, or type generation. Activate whenever the task touches supabase/schemas/, supabase/migrations/, or involves structural database changes.
 license: MIT
 compatibility: Requires Supabase CLI and Supabase MCP server

@@ -8,57 +8,83 @@
 
 ```
 agentlinksh/skills/
-├── README.md                              # Manifesto (principles + architecture)
-├── AGENTS.md                              # Guidance for AI agents working in this repo
-├── LICENSE                                # MIT
+├── .claude-plugin/
+│   └── plugin.json                    # Plugin manifest (name: agentlink)
+├── README.md                          # Overview and installation
+├── LICENSE                            # MIT
 ├── .gitignore
 │
-├── docs/                                  # Project-level documentation (not part of any skill)
-│   ├── WHY_AGENT_LINK.md                  # Origin story, naming, Zelda inspiration
-│   ├── WHY_SQL.md                         # Deep dive on SQL as a Superpower
-│   └── CATALOG.md                         # Full skill catalog with status and roadmap
+├── docs/                              # Project-level documentation
+│   ├── WHY_AGENT_LINK.md             # Origin story, naming, Zelda inspiration
+│   ├── WHY_SQL.md                    # Deep dive on SQL as a Superpower
+│   ├── CATALOG.md                    # Full skill catalog with status and roadmap
+│   └── REPO_STRUCTURE.md            # This file
 │
-└── link-backend-development/              # The skill (single entry point for all backend work)
-    ├── SKILL.md                           # ~400 lines: philosophy, routing, core workflow
-    ├── references/
-    │   ├── naming_conventions.md          # Tables, columns, functions, indexes
-    │   ├── rpc_patterns.md                # RPC-first architecture, security context
-    │   ├── edge_functions.md              # Project structure, shared utilities
-    │   ├── with_supabase.md               # Wrapper rules, role selection, client usage
-    │   ├── setup.md                       # Initial project setup, extensions, vault secrets
-    │   └── development.md                # Development loop, migrations, examples
-    ├── scripts/
-    │   ├── scaffold_schemas.sh            # Bootstrap schema structure
-    │   └── setup_vault_secrets.sh         # Store secrets in Vault
-    └── assets/
-        ├── entities.md                    # Entity registry template
-        ├── check_setup.sql                # Verify infrastructure is in place
-        ├── setup.sql                      # Internal utility function definitions
-        ├── seed.sql                       # Vault secrets for local dev
-        └── functions/
-            ├── withSupabase.ts            # Core edge function wrapper
-            ├── cors.ts                    # CORS handling
-            ├── responses.ts               # Response helpers
-            └── types.ts                   # Shared TypeScript types
+└── skills/                            # All skills live here
+    ├── backend-development/           # Schema-driven dev workflow
+    │   ├── SKILL.md
+    │   ├── references/
+    │   │   ├── setup.md              # Project setup, extensions, vault secrets
+    │   │   ├── development.md        # Dev loop, migrations, examples
+    │   │   └── naming_conventions.md # Tables, columns, functions, indexes
+    │   ├── assets/
+    │   │   ├── check_setup.sql       # Verify infrastructure
+    │   │   ├── setup.sql             # Internal utility functions
+    │   │   ├── seed.sql              # Vault secrets for local dev
+    │   │   └── entities.md           # Entity registry template
+    │   └── scripts/
+    │       ├── scaffold_schemas.sh   # Bootstrap schema structure
+    │       └── setup_vault_secrets.sh
+    │
+    ├── rpc/                           # RPC-first data access
+    │   ├── SKILL.md
+    │   └── references/
+    │       └── rpc_patterns.md       # CRUD, pagination, search, batch, errors
+    │
+    ├── edge-functions/                # Edge functions + withSupabase
+    │   ├── SKILL.md
+    │   ├── references/
+    │   │   ├── edge_functions.md     # Structure, secrets, config, CORS
+    │   │   ├── with_supabase.md      # Wrapper rules, allow types, clients
+    │   │   └── api_key_migration.md  # Legacy → new API keys
+    │   └── assets/
+    │       └── functions/
+    │           ├── withSupabase.ts    # Core wrapper
+    │           ├── cors.ts           # CORS headers
+    │           ├── responses.ts      # Response helpers
+    │           └── types.ts          # Shared types
+    │
+    └── auth/                          # Auth, RLS, multi-tenancy
+        ├── SKILL.md
+        ├── references/
+        │   ├── auth.md               # Auth flows, OAuth, sessions
+        │   └── rls_patterns.md       # RLS policies, RBAC, tenancy
+        └── assets/
+            ├── profile_trigger.sql   # Auto-create profile on sign-up
+            ├── tenant_tables.sql     # Tenants, memberships, invitations
+            └── common_policies.sql   # Reusable RLS policy templates
 ```
 
 ---
 
 ## Design Decisions
 
-### One Skill, Internal Modules
+### Plugin Architecture
 
-Agent Link ships as a single skill (`link-backend-development`) rather than multiple separate skills. This is an intentional decision based on how agent skill activation works in practice:
+Agent Link ships as a Claude Code plugin (`agentlink`). Skills are namespaced under `agentlink:` — e.g., `/agentlink:backend-development`, `/agentlink:auth`.
 
-- **Agents match on descriptions at startup.** Multiple Supabase-related skills with overlapping descriptions cause activation conflicts. One broad skill with a wide-net description guarantees the right skill activates on any Supabase backend work.
-- **The conditional workflow pattern handles routing.** SKILL.md stays lean and routes to domain-specific reference files based on the task type. The agent loads only the references it needs.
-- **Progressive disclosure keeps context costs low.** Reference files are loaded on demand. A builder working on edge functions doesn't pay the context cost for RLS patterns.
+### Composable Skills
 
-As domains grow, new reference files are added — not new skills. If a domain eventually grows large enough to justify separation, it can be split out then.
+Each domain has its own skill with a focused description. Claude loads multiple skills simultaneously when a task spans domains — a request like "add a new entity with RLS and an edge function" triggers `backend-development`, `rpc`, `auth`, and `edge-functions` together.
 
-### Naming
+This replaced the earlier single-skill architecture because:
+- **Focused descriptions trigger more reliably** than one broad catch-all
+- **Context stays lean** — each skill loads only its own references
+- **Plugin namespacing prevents conflicts** — no need for `link-` prefixes
 
-`link-backend-development` keeps the broad "backend development" trigger that has proven effective for agent activation, while branding it as part of Agent Link. Naming it just `supabase` or `supabase-backend` did not work as well in practice.
+### Schema Isolation
+
+The `api` schema is the only schema exposed via the Data API. Tables live in `public` and are invisible to clients. This enforces the RPC-first pattern at the infrastructure level — `supabase.from('table')` literally doesn't work.
 
 ### Relationship to Supabase Official Skills
 
@@ -67,86 +93,26 @@ Supabase provides feature-focused skills (e.g., `supabase-postgres-best-practice
 - **Supabase skills** → "Here's how this feature works"
 - **Agent Link skills** → "Here's the pattern for using these features correctly in a real application"
 
-Agent Link references Supabase official skills where they exist and avoids duplicating feature-level documentation.
-
 ---
 
 ## Distribution
 
-### Via skills.sh
+### As a Claude Code Plugin
 
 ```bash
-npx skills add agentlinksh/skills
-```
+# Install from marketplace (when published)
+/plugin install agentlink
 
-This installs the skill into the appropriate location for the user's agent (Claude Code, Cursor, etc.).
+# Or load from local directory during development
+claude --plugin-dir ./path/to/agentlinksh/skills
+```
 
 ### Manual Installation
 
 ```bash
-# Claude Code
-cp -r link-backend-development ~/.claude/skills/
+# Copy all skills at once
+cp -r skills/* ~/.claude/skills/
 
-# Cursor
-cp -r link-backend-development .cursor/skills/
-
-# Project-level (shared with team via git)
-cp -r link-backend-development .claude/skills/
+# Or individual skills
+cp -r skills/auth ~/.claude/skills/
 ```
-
----
-
-## agentskills.io Compliance
-
-The skill follows the [Agent Skills specification](https://agentskills.io/specification).
-
-### SKILL.md Frontmatter
-
-```yaml
----
-name: link-backend-development
-description: >
-  Supabase backend development workflow. Use for ANY backend work in Supabase
-  projects — schema changes, API endpoints, database functions, RLS policies,
-  edge functions, auth, storage, business logic, or data access. Activate
-  whenever the task involves server-side logic, data layer, or Supabase features.
-license: MIT
-compatibility: Requires Supabase CLI and Supabase MCP server
-metadata:
-  author: agentlink
-  version: "0.1"
----
-```
-
-### Spec Requirements
-
-| Requirement | Status |
-|---|---|
-| `name` matches directory name | ✅ `link-backend-development` |
-| `name` max 64 chars, lowercase + hyphens | ✅ |
-| `description` max 1024 chars, non-empty | ✅ |
-| SKILL.md under 500 lines | ✅ Target ~400 lines |
-| References one level deep | ✅ All in `references/` |
-| Progressive disclosure | ✅ SKILL.md routes, references loaded on demand |
-
----
-
-## Growth Path
-
-New domains are added as reference files inside the single skill:
-
-| Domain | Reference File | Status |
-|---|---|---|
-| Setup | `setup.md` | ✅ Built |
-| Development | `development.md` | ✅ Built |
-| Naming conventions | `naming_conventions.md` | ✅ Built |
-| RPC patterns | `rpc_patterns.md` | ✅ Built |
-| Edge functions | `edge_functions.md`, `with_supabase.md` | ✅ Built |
-| Entity tracking | `entities.md` | ✅ Built |
-| Auth & identity | `auth_identity.md` | 🟡 To build |
-| Row-level security | `row_level_security.md` | 🟡 To build |
-| Cron & queues | `cron_queues.md` | 🟡 To build |
-| Storage | `storage.md` | 🟡 To build |
-| Realtime | `realtime.md` | 🟡 To build |
-| Testing | `testing.md` | 🟡 To build |
-| Multi-tenancy | `multi_tenancy.md` | 🟡 To build |

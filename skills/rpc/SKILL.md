@@ -1,5 +1,5 @@
 ---
-name: link-rpc
+name: rpc
 description: RPC-first data access for Supabase. Use when the task involves creating, modifying, or debugging database functions (RPCs), writing CRUD operations, implementing pagination, search, filtering, batch operations, or any data access logic. Also use when the task mentions business logic functions, input validation in functions, error handling in RPCs, or returning data from the database. Activate whenever the task involves writing SQL functions that clients call via supabase.rpc().
 license: MIT
 metadata:

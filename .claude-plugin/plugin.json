@@ -1,0 +1,10 @@
+{
+  "name": "agentlink",
+  "description": "Opinionated Supabase backend development patterns. Equips AI agents with schema-driven workflows, RPC-first data access, edge functions, auth, RLS, and multi-tenancy.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Agent Link"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/agentlinksh/skills"
+}
