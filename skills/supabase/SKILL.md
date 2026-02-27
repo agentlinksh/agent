@@ -10,7 +10,7 @@ metadata:
 
 # Supabase Development
 
-Entrypoint for all Supabase backend work. Enforce prerequisites before any database access, follow the architecture below, and load the right specialized skills for each task.
+These are your development guidelines — not the project itself. The user's project is what they ask you to build. Follow these patterns when building it.
 
 ## Phase 0: Prerequisites
 
