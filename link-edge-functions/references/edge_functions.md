@@ -74,6 +74,8 @@ supabase secrets set SB_SECRET_KEY=sb_secret_...
 ```
 
 > **Note:** `SUPABASE_URL` is available by default. `SB_PUBLISHABLE_KEY` and `SB_SECRET_KEY` must be set manually.
+>
+> **Migrating from legacy keys?** See [API Key Migration](./api_key_migration.md) for the full migration scope — env vars, edge function rewrites, config.toml, vault secrets, and deployment.
 
 ---
 
