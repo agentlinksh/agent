@@ -2,7 +2,7 @@
 
 An opinionated way to build on Supabase with AI agents.
 
-Agent Link is a Claude Code plugin with composable skills and a Supabase development agent. Each skill covers a specific domain — schema development, RPCs, edge functions, auth — and Claude loads whichever skills are relevant to the current task automatically. The agent bundles all skills together with prerequisites and architecture enforcement.
+Agent Link is a Claude Code plugin with composable skills and an app development agent. Each skill covers a specific domain — schema development, RPCs, edge functions, auth, frontend — and Claude loads whichever skills are relevant to the current task automatically. The agent bundles all skills together with prerequisites and architecture enforcement.
 
 ---
 
@@ -26,7 +26,7 @@ Once installed, you have two ways to use it:
 
 ### Call the agent
 
-Type `@agentlink:supabase` in the Claude Code prompt to start the Supabase development agent. It enforces prerequisites (CLI installed, local stack running, MCP connected), loads architecture rules, and preloads all four domain skills — ready to build.
+Type `@agentlink:app-development` in the Claude Code prompt to start the app development agent. It enforces prerequisites (CLI installed, local stack running, MCP connected), loads architecture rules, and preloads all domain skills — ready to build.
 
 ### Use skills directly
 
@@ -49,13 +49,13 @@ Skills use progressive disclosure to keep context lean:
 3. **References** — loaded on demand from SKILL.md for detailed patterns
 4. **Assets** — ready-to-copy SQL and TypeScript files dropped into projects
 
-The `@agentlink:supabase` agent preloads all four domain skills and enforces prerequisites and architecture before any work begins. Individual skills can also be used standalone — Claude loads multiple skills simultaneously when a task spans domains.
+The `@agentlink:app-development` agent preloads all domain skills and enforces prerequisites and architecture before any work begins. Individual skills can also be used standalone — Claude loads multiple skills simultaneously when a task spans domains.
 
 ---
 
 ## Agent Configuration
 
-The Supabase agent ships with opinionated defaults that affect how it runs:
+The app development agent ships with opinionated defaults that affect how it runs:
 
 ### Permissions
 
@@ -63,7 +63,7 @@ The agent uses `bypassPermissions` mode — it reads skill files, writes code, r
 
 ### Memory
 
-The agent has persistent memory scoped to your project (`.claude/agent-memory/supabase/`). It builds knowledge across sessions — schema decisions, entity names, setup state, patterns specific to your codebase. You can:
+The agent has persistent memory scoped to your project (`.claude/agent-memory/app-development/`). It builds knowledge across sessions — schema decisions, entity names, setup state, patterns specific to your codebase. You can:
 
 - **Read it** to see what the agent remembers about your project
 - **Edit it** to correct mistakes or add context the agent should know
@@ -81,7 +81,7 @@ If you need to run these, run them manually in your terminal.
 
 ### MCP Server
 
-The plugin bundles a Supabase MCP server configuration pointing to `http://localhost:54321/mcp` — the native endpoint exposed by `supabase start`. No manual `claude mcp add` needed. The agent verifies the local stack is running before using it.
+The agent declares its own Supabase MCP server pointing to `http://localhost:54321/mcp` — the native endpoint exposed by `supabase start`. The MCP is only available when the agent is running, preventing accidental connections to the wrong project's database. The agent verifies the local stack is running before using it.
 
 ---
 

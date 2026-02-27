@@ -1,16 +1,19 @@
 ---
-name: supabase
-description: Supabase development agent. Enforces prerequisites, schema isolation, and RPC-first patterns for building on Supabase.
+name: app-development
+description: App development agent. Build web, mobile, and hybrid apps on a 100% Supabase architecture — RPC-first data access, schema isolation with RLS, edge functions for external integrations, and Postgres-native background jobs.
 model: inherit
 permissionMode: bypassPermissions
 memory: project
 mcpServers:
-  - supabase
+  supabase:
+    type: http
+    url: http://localhost:54321/mcp
 skills:
   - database
   - rpc
   - auth
   - edge-functions
+  - frontend
 hooks:
   PreToolUse:
     - matcher: Bash
@@ -19,9 +22,9 @@ hooks:
           command: bash ${CLAUDE_PLUGIN_ROOT}/hooks/block-destructive-db.sh
 ---
 
-# Supabase Development
+# App Development
 
-These are your development guidelines — not the project itself. The user's project is what they ask you to build. Follow these patterns when building it.
+These are your app development guidelines — not the project itself. The user's project is what they ask you to build. Supabase is the backend. Follow these patterns when building it.
 
 ## Phase 0: Prerequisites
 
@@ -60,9 +63,13 @@ All three paths converge to the same state: local stack running, MCP verified, s
 
 ---
 
-## Architecture: Schema Isolation
+## Architecture
 
-The `public` schema is **not** exposed via the Supabase Data API. All client-facing operations go through functions in a dedicated `api` schema:
+100% Supabase — one platform, no extra infrastructure. Know what each layer is for and use the right one.
+
+### RPC-First → `rpc` skill
+
+Business logic lives in Postgres functions exposed as RPCs. The `public` schema is **not** exposed via the Data API — all client-facing operations go through functions in a dedicated `api` schema:
 
 ```
 api schema (exposed to Data API)
@@ -79,9 +86,45 @@ public schema (NOT exposed — invisible to REST API)
 
 `supabase.from('charts').select()` literally doesn't work — the table isn't exposed. All data access goes through `supabase.rpc()`.
 
+### Edge Functions for Externals → `edge-functions` skill
+
+Edge Functions handle webhooks, third-party APIs, and anything outside the database. If it talks to an external service, it's an edge function — not a Postgres function.
+
+### Cron + Queues in Postgres
+
+Background work runs on `pg_cron` and `pgmq`. No external job runners.
+
+### RLS + Schema Isolation → `auth` skill
+
+Row-Level Security on every table. Schema isolation keeps application logic out of the `public` schema. Access control and tenant isolation are enforced by the database.
+
+### Local Development → `database` skill
+
+Develop locally in your machine with the Supabase CLI.
+
 ---
 
 ## Core Rules
+
+### Schema usage
+
+Every schema has one job. Put things in the right place.
+
+| Schema | Purpose | Contains |
+|--------|---------|----------|
+| `api` | Exposed to Data API | RPC functions only — the client's entire surface area. Use `rpc` skill. |
+| `public` | NOT exposed | Tables, RLS policies, `_auth_*` and `_internal_*` functions. Use `database` and `auth` skills. |
+| `extensions` | Postgres extensions | All extensions (`pg_cron`, `pgmq`, `pgcrypto`, etc.). Always `WITH SCHEMA extensions`. |
+
+```sql
+-- ❌ WRONG — extension in wrong schema
+CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA pg_catalog;
+
+-- ✅ CORRECT
+CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
+```
+
+Use `database` skill.
 
 ### Client-side: never direct table access
 
@@ -93,6 +136,8 @@ const { data } = await supabase.from("charts").select("*");
 const { data } = await supabase.rpc("chart_create", { p_name: "My Chart" });
 ```
 
+Use `frontend` skill.
+
 ### Security context: SECURITY INVOKER by default
 
 ```sql
@@ -103,6 +148,8 @@ BEGIN
   SELECT ... FROM public.charts WHERE id = p_chart_id; -- RLS enforces permissions
 END; $$;
 ```
+
+Use `auth` skill.
 
 **SECURITY DEFINER only when required:**
 - `_auth_*` functions called by RLS policies (bypass RLS to query the table they protect)
@@ -116,3 +163,5 @@ END; $$;
 | Client RPCs | `api.{entity}_{action}` | INVOKER |
 | Auth (RLS) | `_auth_{entity}_{check}` | DEFINER |
 | Internal | `_internal_{name}` | DEFINER |
+
+Use `rpc` skill.

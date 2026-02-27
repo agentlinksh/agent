@@ -6,11 +6,11 @@ Skills that equip AI agents to build correctly on Supabase. Distributed as a Cla
 
 ## Architecture
 
-**Plugin:** `agentlink` — skills namespaced under `agentlink:`, agent available as `agentlink:supabase`.
+**Plugin:** `agentlink` — skills namespaced under `agentlink:`, agent available as `agentlink:app-development`.
 
 **Schema isolation** — The `public` schema is not exposed via the Data API. All client-facing operations go through functions in a dedicated `api` schema. Tables, internal functions, and auth helpers live in `public`, invisible to the REST API. This enforces the RPC-first pattern at the infrastructure level.
 
-**Agent + composable skills** — The `supabase` agent bundles all domain skills with prerequisites and architecture enforcement. Skills can also be used individually. A task like "add a new entity with RLS and an edge function" uses three skills at once, each contributing its domain.
+**Agent + composable skills** — The `app-development` agent bundles all domain skills with prerequisites and architecture enforcement. Skills can also be used individually. A task like "add a new entity with RLS and an edge function" uses three skills at once, each contributing its domain.
 
 **Progressive disclosure** — SKILL.md loads the core workflow. References load on demand from SKILL.md. Assets are copied into projects when used. Context cost stays low.
 
@@ -18,13 +18,13 @@ Skills that equip AI agents to build correctly on Supabase. Distributed as a Cla
 
 ## Agent
 
-### 🤖 supabase
+### 🤖 app-development
 
-> Supabase development agent. Enforces prerequisites, schema isolation, and RPC-first patterns for building on Supabase.
+> App development agent. Build web, mobile, and hybrid apps on a 100% Supabase architecture — RPC-first data access, schema isolation with RLS, edge functions for external integrations, and Postgres-native background jobs.
 
 **Status:** ✅ Built
 
-**Owns:** Phase 0 prerequisites (project context detection, setup routing), schema isolation architecture, RPC-first philosophy, security context rules.
+**Owns:** Phase 0 prerequisites (project context detection, setup routing), architecture (RPC-first, schema isolation, edge functions for externals, cron + queues, RLS), security context rules.
 
 **Preloads:** `database`, `rpc`, `auth`, `edge-functions`
 
@@ -158,7 +158,7 @@ agentlink/
 ├── .claude-plugin/
 │   └── plugin.json           # Plugin manifest (name, version, author)
 ├── agents/
-│   └── supabase.md           # Agent — prereqs, architecture, core rules
+│   └── app-development.md    # Agent — prereqs, architecture, core rules
 ├── hooks/
 │   ├── hooks.json            # Plugin-level hook configuration
 │   └── block-destructive-db.sh  # Blocks supabase db reset / push --force
