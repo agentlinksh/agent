@@ -52,6 +52,38 @@ The `@agentlink:supabase` agent preloads all four domain skills and enforces pre
 
 ---
 
+## Agent Configuration
+
+The Supabase agent ships with opinionated defaults that affect how it runs:
+
+### Permissions
+
+The agent uses `bypassPermissions` mode — it reads skill files, writes code, runs CLI commands, and uses MCP tools without prompting. This is required because the plugin's skill files live outside your project directory and would otherwise trigger permission prompts on every read.
+
+### Memory
+
+The agent has persistent memory scoped to your project (`.claude/agent-memory/supabase/`). It builds knowledge across sessions — schema decisions, entity names, setup state, patterns specific to your codebase. You can:
+
+- **Read it** to see what the agent remembers about your project
+- **Edit it** to correct mistakes or add context the agent should know
+- **Delete it** to start fresh
+- **Commit it** to share project knowledge with your team via version control
+
+### Blocked Commands
+
+As a protective measure, the agent is blocked from running these destructive database commands:
+
+- `supabase db reset` — destroys and recreates the local database
+- `supabase db push --force` / `-f` — overwrites remote schema without diffing
+
+If you need to run these, run them manually in your terminal.
+
+### MCP Server
+
+The plugin bundles a Supabase MCP server configuration pointing to `http://localhost:54321/mcp` — the native endpoint exposed by `supabase start`. No manual `claude mcp add` needed. The agent verifies the local stack is running before using it.
+
+---
+
 ## Documentation
 
 - **[About Agent Link](./docs/ABOUT.md)** — Principles, architecture, and design philosophy
