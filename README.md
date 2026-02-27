@@ -22,15 +22,25 @@ claude --plugin-dir ./path/to/agentlink
 
 ## Usage
 
-Once installed, you have two ways to use it:
+Describe what you want to build and tell Claude to use Agent Link. The agent handles the rest — prerequisites, architecture, and the right skills for the job.
 
-### Call the agent
+```
+Build me an uptime monitor with Supabase. Use agent link to plan.
+```
 
-Type `@agentlink:app-development` in the Claude Code prompt to start the app development agent. It enforces prerequisites (CLI installed, local stack running, MCP connected), loads architecture rules, and preloads all domain skills — ready to build.
+```
+Review my schema and suggest improvements. Use agent link.
+```
+
+```
+Add a multi-tenant invitation flow to my app. Use agent link.
+```
+
+The agent auto-triggers when you mention it in your prompt. You can also call it directly with `@agentlink:app-development`.
 
 ### Use skills directly
 
-Skills activate automatically when Claude detects a relevant task. You can also invoke them explicitly with slash commands:
+Skills also activate automatically when Claude detects a relevant task. You can invoke them explicitly with slash commands:
 
 - `/agentlink:database` — schema files, migrations, type generation
 - `/agentlink:rpc` — RPC-first data access, CRUD templates, pagination
