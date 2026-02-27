@@ -67,10 +67,6 @@ The `@agentlink:app-development` agent preloads all domain skills and enforces p
 
 The app development agent ships with opinionated defaults that affect how it runs:
 
-### Permissions
-
-The agent uses `bypassPermissions` mode — it reads skill files, writes code, runs CLI commands, and uses MCP tools without prompting. This is required because the plugin's skill files live outside your project directory and would otherwise trigger permission prompts on every read.
-
 ### Memory
 
 The agent has persistent memory scoped to your project (`.claude/agent-memory/app-development/`). It builds knowledge across sessions — schema decisions, entity names, setup state, patterns specific to your codebase. You can:
