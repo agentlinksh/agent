@@ -165,8 +165,6 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION api.tenant_select(uuid) TO authenticated;
-
 CREATE OR REPLACE FUNCTION api.tenant_list()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -188,5 +186,3 @@ BEGIN
   );
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.tenant_list() TO authenticated;

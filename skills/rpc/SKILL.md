@@ -48,9 +48,6 @@ BEGIN
   RETURN v_result;
 END;
 $$;
-
--- Grant access to authenticated users
-GRANT EXECUTE ON FUNCTION api.chart_get_by_id(uuid) TO authenticated;
 ```
 
 **Key rules:**
@@ -58,7 +55,7 @@ GRANT EXECUTE ON FUNCTION api.chart_get_by_id(uuid) TO authenticated;
 - **`SECURITY INVOKER`** — RLS applies automatically, no manual `auth.uid()` filtering
 - **`SET search_path = ''`** — prevents search path injection
 - **Fully qualified table names** — `public.charts`, never just `charts`
-- **`GRANT EXECUTE`** — explicitly grant to `authenticated`, `anon`, or both
+- **No per-function `GRANT EXECUTE`** — schema-level default privileges in `_schemas.sql` handle this automatically
 - **`p_` prefix** on parameters, `v_` prefix on local variables
 
 ## Security Context
@@ -93,13 +90,13 @@ $$;
 
 ## CRUD Quick Reference
 
-| Operation | Function name | Returns | Grant to |
-|-----------|--------------|---------|----------|
-| Create | `api.chart_create(...)` | `jsonb` (new record) | `authenticated` |
-| Get by ID | `api.chart_get_by_id(uuid)` | `jsonb` (single record) | `authenticated` |
-| List | `api.chart_list(...)` | `jsonb` (array + pagination) | `authenticated` |
-| Update | `api.chart_update(uuid, ...)` | `jsonb` (updated record) | `authenticated` |
-| Delete | `api.chart_delete(uuid)` | `jsonb` (success/error) | `authenticated` |
+| Operation | Function name | Returns |
+|-----------|--------------|---------|
+| Create | `api.chart_create(...)` | `jsonb` (new record) |
+| Get by ID | `api.chart_get_by_id(uuid)` | `jsonb` (single record) |
+| List | `api.chart_list(...)` | `jsonb` (array + pagination) |
+| Update | `api.chart_update(uuid, ...)` | `jsonb` (updated record) |
+| Delete | `api.chart_delete(uuid)` | `jsonb` (success/error) |
 
 **Naming:** `{entity}_{action}` — use `create`, `get_by_{field}`, `list`, `list_by_{field}`, `update`, `delete`, or domain verbs like `close`, `archive`, `approve`.
 
@@ -138,6 +135,5 @@ RETURN jsonb_build_object(
 - [ ] `SECURITY INVOKER` (unless `_auth_*` or `_internal_*`)
 - [ ] `SET search_path = ''`
 - [ ] Fully qualified table names (`public.tablename`)
-- [ ] `GRANT EXECUTE` to the appropriate role
 - [ ] Don't manually filter by `auth.uid()` in INVOKER functions — RLS does this
 - [ ] Validate input parameters before use

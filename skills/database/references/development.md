@@ -207,8 +207,6 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION api.reading_create(uuid, jsonb) TO authenticated;
-
 CREATE OR REPLACE FUNCTION api.reading_get_by_id(p_reading_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -231,8 +229,6 @@ BEGIN
   RETURN v_result;
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.reading_get_by_id(uuid) TO authenticated;
 ```
 
 **5. Apply everything** — Run each file's SQL via `supabase:execute_sql` in order: auth functions → entity file → API functions.

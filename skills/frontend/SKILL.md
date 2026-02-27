@@ -22,7 +22,8 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+  { db: { schema: "api" } }
 );
 ```
 
@@ -36,7 +37,8 @@ import { createBrowserClient } from "@supabase/ssr";
 // Client-side — use in components, hooks, client modules
 const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+  { db: { schema: "api" } }
 );
 ```
 
@@ -47,7 +49,7 @@ import { createServerClient } from "@supabase/ssr";
 const supabase = createServerClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-  { cookies: { /* cookie handlers — see SSR reference */ } }
+  { db: { schema: "api" }, cookies: { /* cookie handlers — see SSR reference */ } }
 );
 ```
 
@@ -145,7 +147,8 @@ import type { Database } from "./types/database";
 
 const supabase = createClient<Database>(
   import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+  { db: { schema: "api" } }
 );
 
 // RPC calls are now typed — parameters and return types are inferred

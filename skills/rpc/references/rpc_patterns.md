@@ -46,8 +46,6 @@ BEGIN
   );
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.chart_create(text, text) TO authenticated;
 ```
 
 ### Get by ID
@@ -80,8 +78,6 @@ BEGIN
   RETURN v_result;
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.chart_get_by_id(uuid) TO authenticated;
 ```
 
 ### List (with cursor pagination)
@@ -134,8 +130,6 @@ BEGIN
   );
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.chart_list(int, timestamptz) TO authenticated;
 ```
 
 **Client usage:**
@@ -191,8 +185,6 @@ BEGIN
   );
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.chart_list_paged(int, int) TO authenticated;
 ```
 
 ### Update
@@ -231,8 +223,6 @@ BEGIN
   RETURN v_result;
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.chart_update(uuid, text, text) TO authenticated;
 ```
 
 **Pattern: partial updates with COALESCE.** Parameters default to NULL. `COALESCE(p_name, name)` keeps the existing value when the parameter isn't provided. This lets clients update only the fields they care about.
@@ -256,8 +246,6 @@ BEGIN
   RETURN jsonb_build_object('success', true);
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.chart_delete(uuid) TO authenticated;
 ```
 
 For soft delete, use an `archived_at` timestamp instead:
@@ -281,8 +269,6 @@ BEGIN
   RETURN jsonb_build_object('success', true);
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.chart_archive(uuid) TO authenticated;
 ```
 
 ---
@@ -333,8 +319,6 @@ BEGIN
   );
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.chart_list(text, text, int, timestamptz) TO authenticated;
 ```
 
 ### Full-text search
@@ -375,8 +359,6 @@ BEGIN
   );
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.chart_search(text, int) TO authenticated;
 ```
 
 ---
@@ -413,8 +395,6 @@ BEGIN
   );
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.chart_create_batch(jsonb) TO authenticated;
 ```
 
 ### Batch delete
@@ -440,8 +420,6 @@ BEGIN
   );
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.chart_delete_batch(uuid[]) TO authenticated;
 ```
 
 ---
@@ -507,8 +485,6 @@ EXCEPTION
     RETURN jsonb_build_object('success', false, 'error', SQLERRM);
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.order_close(uuid) TO authenticated;
 ```
 
 ---
@@ -562,16 +538,15 @@ RETURN jsonb_build_object('success', true, 'chart_id', v_id);
 
 ## Grants
 
-Every `api.*` function needs explicit grants. Without them, no role can call the function:
+Schema-level default privileges handle grants automatically. The `_schemas.sql` file (created by `scaffold_schemas.sh`) contains:
 
 ```sql
--- Authenticated users only (most common)
-GRANT EXECUTE ON FUNCTION api.chart_create(text, text) TO authenticated;
-
--- Both anon and authenticated (public endpoints)
-GRANT EXECUTE ON FUNCTION api.chart_list_public(int) TO anon, authenticated;
-
--- Grant must match the exact function signature (parameter types)
+GRANT USAGE ON SCHEMA api TO anon, authenticated;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA api TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA api
+  GRANT EXECUTE ON FUNCTIONS TO anon, authenticated;
 ```
 
-`_auth_*` and `_internal_*` functions in `public` do **not** get grants to `authenticated` or `anon` — they're called internally by RLS policies and other functions, not by clients.
+Every function created in the `api` schema is automatically callable by both `anon` and `authenticated` roles. No per-function `GRANT EXECUTE` is needed.
+
+`_auth_*` and `_internal_*` functions in `public` do **not** get grants — they're called internally by RLS policies and other functions, not by clients.

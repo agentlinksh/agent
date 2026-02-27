@@ -316,8 +316,6 @@ BEGIN
   );
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.tenant_select(uuid) TO authenticated;
 ```
 
 After calling this, the client must refresh the session to get a new JWT with the updated claims:
@@ -377,8 +375,6 @@ BEGIN
   RETURN jsonb_build_object('success', true, 'invitation_id', v_invitation.id);
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.invitation_create(text, text) TO authenticated;
 ```
 
 ### Accept (invited user)
@@ -421,8 +417,6 @@ BEGIN
   );
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.invitation_accept(text) TO authenticated;
 ```
 
 ---

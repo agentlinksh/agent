@@ -33,7 +33,8 @@ import { createBrowserClient } from "@supabase/ssr";
 export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    { db: { schema: "api" } }
   );
 }
 ```
@@ -50,6 +51,7 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
+      db: { schema: "api" },
       cookies: {
         getAll() {
           return cookieStore.getAll();
@@ -84,6 +86,7 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
+      db: { schema: "api" },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -174,7 +177,9 @@ import { createBrowserClient } from "@supabase/ssr";
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY } from "$env/static/public";
 
 export function createClient() {
-  return createBrowserClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+  return createBrowserClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
+    db: { schema: "api" },
+  });
 }
 ```
 
@@ -186,6 +191,7 @@ import type { Cookies } from "@sveltejs/kit";
 
 export function createClient(cookies: Cookies) {
   return createServerClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
+    db: { schema: "api" },
     cookies: {
       getAll() {
         return cookies.getAll();

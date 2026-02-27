@@ -105,8 +105,6 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION api.profile_get() TO authenticated;
-
 CREATE OR REPLACE FUNCTION api.profile_update(
   p_display_name text DEFAULT NULL,
   p_avatar_url text DEFAULT NULL
@@ -127,8 +125,6 @@ BEGIN
   RETURN api.profile_get();
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION api.profile_update(text, text) TO authenticated;
 ```
 
 ---
