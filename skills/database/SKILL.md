@@ -45,6 +45,7 @@ Files are grouped by Postgres schema (`public/`, `api/`) with entity-centric fil
 **Which schema for what:**
 - `api.*` — Client-facing RPCs (the only things exposed via the Data API)
 - `public.*` — Tables, `_auth_*` functions, `_internal_*` functions, triggers
+- `extensions.*` — All Postgres extensions. Always `CREATE EXTENSION ... WITH SCHEMA extensions`
 - Never create tables in `api` — it contains functions only
 
 ---
