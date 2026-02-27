@@ -11,6 +11,7 @@ Run once per project to ensure the required infrastructure is in place. The agen
 - Store Missing Vault Secrets
 - Add Vault Secrets to Seed File
 - Re-run the Check
+- Configure API Schemas
 - Scaffold Schema Structure
 
 ---
@@ -61,8 +62,8 @@ If `"ready": true`, skip to the normal development phases. Otherwise continue be
 If `extensions.pg_net` or `extensions.vault` is `false`, apply a migration:
 
 ```sql
-CREATE EXTENSION IF NOT EXISTS pg_net;
-CREATE EXTENSION IF NOT EXISTS supabase_vault;
+CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS supabase_vault WITH SCHEMA extensions;
 ```
 
 Use `supabase:apply_migration` with a descriptive name like `enable_required_extensions`.
@@ -124,7 +125,18 @@ This is for local development only. Production secrets are managed through the S
 
 Run `assets/check_setup.sql` again via `supabase:execute_sql` and confirm `"ready": true` before proceeding to Phase 1.
 
-## 8. Scaffold Schema Structure (if needed)
+## 8. Configure API Schemas
+
+Update `supabase/config.toml` to expose only the `api` schema via the Data API. Remove `public` — tables are never accessed directly, only through RPC functions in the `api` schema.
+
+```toml
+[api]
+schemas = ["api"]
+```
+
+The default config includes `public` and `graphql_public`. Replace the entire list with `["api"]`.
+
+## 9. Scaffold Schema Structure (if needed)
 
 If `supabase/schemas/` doesn't exist yet, run the scaffold script:
 

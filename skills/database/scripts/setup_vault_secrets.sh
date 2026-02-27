@@ -142,7 +142,7 @@ echo ""
 # Verify vault extension is available
 if ! run_sql "SELECT 1 FROM pg_extension WHERE extname = 'supabase_vault';" > /dev/null 2>&1; then
   echo "Error: vault extension is not enabled. Enable it first:"
-  echo "  CREATE EXTENSION IF NOT EXISTS supabase_vault;"
+  echo "  CREATE EXTENSION IF NOT EXISTS supabase_vault WITH SCHEMA extensions;"
   exit 1
 fi
 

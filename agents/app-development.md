@@ -3,10 +3,6 @@ name: app-development
 description: App development agent. Build web, mobile, and hybrid apps on a 100% Supabase architecture — RPC-first data access, schema isolation with RLS, edge functions for external integrations, and Postgres-native background jobs.
 model: inherit
 memory: project
-mcpServers:
-  supabase:
-    type: http
-    url: http://localhost:54321/mcp
 skills:
   - database
   - rpc
@@ -55,10 +51,16 @@ Before starting, detect the project context and follow the appropriate path:
 **Detect:** `supabase/` directory exists.
 
 1. **Verify local stack** — Run `supabase status` from the project root (bash, not MCP). If the stack isn't running, run `supabase start`. If the CLI is not found, the user must install it.
-2. **Verify Supabase MCP** — Confirm the `supabase` MCP server is connected. Required tools: `supabase:execute_sql`, `supabase:apply_migration`.
+2. **Verify Supabase MCP** — Check if `supabase:execute_sql` is available. If the MCP server is not connected, configure it in your environment:
+   - Server name: `supabase`
+   - Type: HTTP
+   - URL: `http://localhost:54321/mcp` (native endpoint from `supabase start`)
+   - Required tools: `supabase:execute_sql`, `supabase:apply_migration`
+
+   **Do not fall back to `psql` at first.** All SQL execution goes through `supabase:execute_sql`. If you are not able to connect, ask the user to verify if MCP is available. If user can't resolve, propose the usage of `psql`.
 3. **Run the setup check** — Load the `database` skill and run its setup check (`assets/check_setup.sql`) via `supabase:execute_sql`. If `"ready": true` — proceed to development.
 
-All three paths converge to the same state: local stack running, MCP verified, setup check passing.
+All three paths converge to the same state: local stack running, MCP verified, setup check passing. After `supabase start`, always verify the Supabase MCP (see Path C step 2).
 
 ---
 

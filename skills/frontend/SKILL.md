@@ -51,7 +51,7 @@ const supabase = createServerClient(
 );
 ```
 
-> **Load [SSR Patterns](./references/ssr.md) for full `@supabase/ssr` setup with Next.js App Router and SvelteKit.**
+> **Load [SSR Patterns](./references/ssr.md) for full `@supabase/ssr` setup with Next.js App Router or SvelteKit.**
 
 ---
 
