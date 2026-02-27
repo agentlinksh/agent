@@ -145,6 +145,9 @@ agentlink/
 │   └── plugin.json           # Plugin manifest (name, version, author)
 ├── agents/
 │   └── supabase.md           # Agent — prereqs, architecture, core rules
+├── hooks/
+│   ├── hooks.json            # Plugin-level hook configuration
+│   └── block-destructive-db.sh  # Blocks supabase db reset / push --force
 ├── skills/
 │   ├── database/
 │   │   ├── SKILL.md          # Schema files, migrations, setup

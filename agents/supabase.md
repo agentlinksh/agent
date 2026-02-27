@@ -11,6 +11,12 @@ skills:
   - rpc
   - auth
   - edge-functions
+hooks:
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: bash ${CLAUDE_PLUGIN_ROOT}/hooks/block-destructive-db.sh
 ---
 
 # Supabase Development
