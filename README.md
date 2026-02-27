@@ -2,55 +2,40 @@
 
 An opinionated way to build on Supabase with AI agents.
 
-Agent Link is a set of composable skills that teach AI agents how to build complete applications on Supabase. Each skill covers a specific domain — schema development, RPCs, edge functions, auth — and Claude loads whichever skills are relevant to the current task automatically.
+Agent Link is a Claude Code plugin with composable skills and a Supabase development agent. Each skill covers a specific domain — schema development, RPCs, edge functions, auth — and Claude loads whichever skills are relevant to the current task automatically. The agent bundles all skills together with prerequisites and architecture enforcement.
 
 ---
 
 ## Install
 
-### As a Claude Code Plugin
+Agent Link is a [Claude Code plugin](https://docs.anthropic.com/en/docs/claude-code/plugins). Install it at project scope so every conversation in that project has access to the skills and agent.
 
 ```bash
-# From the marketplace (when published)
-/plugin install agentlink
+# Project scope (recommended) — from the marketplace when published
+/install-plugin agentlink
 
-# From a local directory during development
-claude --plugin-dir ./path/to/agentlinksh/skills
+# Local directory during development
+claude --plugin-dir ./path/to/agentlink
 ```
-
-All skills are namespaced under `agentlink:` — e.g., `/agentlink:database`, `/agentlink:auth`.
-
-### As Agent Skills
-
-```bash
-npx skills add agentlinksh/skills
-```
-
-Works with Claude Code, Cursor, Copilot, and other agents that support the [Agent Skills specification](https://agentskills.io/specification).
 
 ---
 
-## Skills
+## Usage
 
-### supabase-development
+Once installed, you have two ways to use it:
 
-Entrypoint for all Supabase backend work. Verifies prerequisites (CLI installed, local stack running for this project), enforces the architecture (schema isolation, RPC-first), and loads the specialized skills below.
+### Call the agent
 
-### database
+Type `@agentlink:supabase` in the Claude Code prompt to start the Supabase development agent. It enforces prerequisites (CLI installed, local stack running, MCP connected), loads architecture rules, and preloads all four domain skills — ready to build.
 
-Schema files, migrations, project setup. Development loop (write SQL, apply live, iterate), type generation, naming conventions.
+### Use skills directly
 
-### rpc
+Skills activate automatically when Claude detects a relevant task. You can also invoke them explicitly with slash commands:
 
-RPC-first data access. Every client operation is a function in the `api` schema — CRUD templates, pagination, search/filtering, input validation, error handling, batch operations.
-
-### edge-functions
-
-Edge functions with the `withSupabase` wrapper. External integrations, webhooks, service-to-service calls, secrets management, CORS, and the `config.toml` setup.
-
-### auth
-
-Authentication, authorization, and tenant isolation. Supabase Auth patterns, profile creation, RLS policies, RBAC, multi-tenancy model, JWT claims, invitation flows.
+- `/agentlink:database` — schema files, migrations, type generation
+- `/agentlink:rpc` — RPC-first data access, CRUD templates, pagination
+- `/agentlink:edge-functions` — `withSupabase` wrapper, webhooks, secrets
+- `/agentlink:auth` — RLS policies, RBAC, multi-tenancy, invitation flows
 
 ---
 
@@ -63,7 +48,7 @@ Skills use progressive disclosure to keep context lean:
 3. **References** — loaded on demand from SKILL.md for detailed patterns
 4. **Assets** — ready-to-copy SQL and TypeScript files dropped into projects
 
-Claude loads multiple skills simultaneously when a task spans domains. A request like "add a new entity with RLS and an edge function" triggers `supabase-development` which runs prerequisites and loads `database`, `rpc`, `auth`, and `edge-functions` skills as needed.
+The `@agentlink:supabase` agent preloads all four domain skills and enforces prerequisites and architecture before any work begins. Individual skills can also be used standalone — Claude loads multiple skills simultaneously when a task spans domains.
 
 ---
 

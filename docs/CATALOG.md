@@ -1,32 +1,36 @@
 # Agent Link — Skill Catalog
 
-Skills that equip AI agents to build correctly on Supabase. Distributed as a Claude Code plugin — install once, get all skills. Claude loads whichever skills are relevant to the current task automatically.
+Skills that equip AI agents to build correctly on Supabase. Distributed as a Claude Code plugin — install once, get all skills and the Supabase development agent.
 
 ---
 
 ## Architecture
 
-**Plugin:** `agentlink` — all skills are namespaced under `agentlink:` (e.g., `/agentlink:database`).
+**Plugin:** `agentlink` — skills namespaced under `agentlink:`, agent available as `agentlink:supabase`.
 
 **Schema isolation** — The `public` schema is not exposed via the Data API. All client-facing operations go through functions in a dedicated `api` schema. Tables, internal functions, and auth helpers live in `public`, invisible to the REST API. This enforces the RPC-first pattern at the infrastructure level.
 
-**Composable skills** — Each skill has a focused description. Claude loads whichever skills are relevant to the current task and coordinates them automatically. A task like "add a new entity with RLS and an edge function" loads three skills at once, each contributing its domain.
+**Agent + composable skills** — The `supabase` agent bundles all domain skills with prerequisites and architecture enforcement. Skills can also be used individually. A task like "add a new entity with RLS and an edge function" uses three skills at once, each contributing its domain.
 
-**Progressive disclosure** — Only name + description are always in context (~100 tokens per skill). SKILL.md loads when triggered. References load on demand from SKILL.md. Context cost stays low.
+**Progressive disclosure** — SKILL.md loads the core workflow. References load on demand from SKILL.md. Assets are copied into projects when used. Context cost stays low.
+
+---
+
+## Agent
+
+### 🤖 supabase
+
+> Supabase development agent. Enforces prerequisites, schema isolation, and RPC-first patterns for building on Supabase.
+
+**Status:** ✅ Built
+
+**Owns:** Phase 0 prerequisites (`supabase status` check), schema isolation architecture, RPC-first philosophy, security context rules.
+
+**Preloads:** `database`, `rpc`, `auth`, `edge-functions`
 
 ---
 
 ## Skills
-
-### 🚀 supabase-development
-
-> Entrypoint for all Supabase backend work. Verifies prerequisites, enforces architecture, loads specialized skills.
-
-**Status:** ✅ Built
-
-**Owns:** Phase 0 prerequisites (`supabase status` check), schema isolation architecture, RPC-first philosophy, security context rules, skill routing.
-
----
 
 ### 🔧 database
 
@@ -139,9 +143,9 @@ Skills that equip AI agents to build correctly on Supabase. Distributed as a Cla
 agentlink/
 ├── .claude-plugin/
 │   └── plugin.json           # Plugin manifest (name, version, author)
+├── agents/
+│   └── supabase.md           # Agent — prereqs, architecture, core rules
 ├── skills/
-│   ├── supabase/
-│   │   └── SKILL.md          # Entrypoint — prereqs, architecture, routing
 │   ├── database/
 │   │   ├── SKILL.md          # Schema files, migrations, setup
 │   │   ├── references/

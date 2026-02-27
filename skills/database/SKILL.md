@@ -10,7 +10,7 @@ metadata:
 
 # Database
 
-Schema files, migrations, and project setup. Prerequisites and architecture are in the `supabase-development` skill.
+Schema files, migrations, and project setup. Prerequisites and architecture are in the `agentlink` agent.
 
 ## Setup Check
 

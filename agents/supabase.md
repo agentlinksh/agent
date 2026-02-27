@@ -1,11 +1,12 @@
 ---
 name: supabase
-description: Supabase development. Use for ANY backend work in Supabase projects — schema changes, database functions, RLS policies, API endpoints, edge functions, auth, multi-tenancy, or data access. Activate whenever the task involves Supabase features.
-license: MIT
-compatibility: Requires Supabase CLI and Supabase MCP server
-metadata:
-  author: agentlink
-  version: "0.1"
+description: Supabase development agent. Enforces prerequisites, schema isolation, and RPC-first patterns for building on Supabase.
+model: inherit
+skills:
+  - database
+  - rpc
+  - auth
+  - edge-functions
 ---
 
 # Supabase Development
@@ -47,21 +48,6 @@ public schema (NOT exposed — invisible to REST API)
 ```
 
 `supabase.from('charts').select()` literally doesn't work — the table isn't exposed. All data access goes through `supabase.rpc()`.
-
----
-
-## Skills
-
-Load the relevant skills based on the task. Multiple skills can be active simultaneously.
-
-| Skill | Use when the task involves |
-|-------|---------------------------|
-| **database** | Tables, columns, indexes, triggers, migrations, schema files, type generation |
-| **rpc** | Client-facing functions (`api.*`), CRUD, pagination, search, batch operations |
-| **auth** | RLS policies, `_auth_*` functions, multi-tenancy, profiles, roles, invitations |
-| **edge-functions** | Edge functions, external integrations, webhooks, `withSupabase` wrapper |
-
-For a typical "build a new feature" task, load **database** + **rpc** + **auth** together.
 
 ---
 
