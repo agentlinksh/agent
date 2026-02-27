@@ -24,7 +24,7 @@ Skills that equip AI agents to build correctly on Supabase. Distributed as a Cla
 
 **Status:** ✅ Built
 
-**Owns:** Phase 0 prerequisites (`supabase status` check), schema isolation architecture, RPC-first philosophy, security context rules.
+**Owns:** Phase 0 prerequisites (project context detection, setup routing), schema isolation architecture, RPC-first philosophy, security context rules.
 
 **Preloads:** `database`, `rpc`, `auth`, `edge-functions`
 

@@ -1,6 +1,6 @@
 # Setup
 
-Run once per project to ensure the required infrastructure is in place. This corresponds to **Phase 0** in SKILL.md.
+Run once per project to ensure the required infrastructure is in place. The agent determines when to run this guide based on the project context.
 
 ## Contents
 - Verify Local Stack
@@ -17,17 +17,17 @@ Run once per project to ensure the required infrastructure is in place. This cor
 
 ## 0. Verify Local Stack
 
-Run `supabase status` from the project root. This is the single check that confirms:
+**Prerequisite:** `supabase init` must have already been run (the `supabase/` directory must exist). The agent handles when to run `supabase init` based on the project context — see the agent for routing details.
+
+Run `supabase status` from the project root. This confirms:
 
 - The Supabase CLI is installed
-- The project is initialized (`supabase/` directory exists)
 - The local database is running **for this project**
 
-**If the command fails**, follow this sequence:
+**If the command fails:**
 
 1. **CLI not found** → the user must install the Supabase CLI before proceeding
-2. **No `supabase/` directory** → run `supabase init` to initialize the project
-3. **Stack not running** → run `supabase start` to start the local development stack
+2. **Stack not running** → run `supabase start` to start the local development stack
 
 **Why this matters:** The Supabase MCP server may be connected to a different project's database. `supabase status` run from the project directory is the only way to confirm the local stack is running for the correct project.
 

@@ -2,6 +2,10 @@
 name: supabase
 description: Supabase development agent. Enforces prerequisites, schema isolation, and RPC-first patterns for building on Supabase.
 model: inherit
+permissionMode: bypassPermissions
+memory: project
+mcpServers:
+  - supabase
 skills:
   - database
   - rpc
@@ -15,18 +19,34 @@ These are your development guidelines — not the project itself. The user's pro
 
 ## Phase 0: Prerequisites
 
-**Do not call `supabase:execute_sql` or any MCP tool until step 1 passes.** The MCP server may be connected to a different project's database.
+**Do not call `supabase:execute_sql` or any MCP tool until the local stack is verified.** The MCP server may be connected to a different project's database.
 
-**1. Verify local stack is running** — Run `supabase status` from the project root (bash, not MCP). This confirms the CLI is installed AND the local database is running for this project.
+Before starting, detect the project context and follow the appropriate path:
 
-If it fails:
-- **CLI not found** — the user must install the Supabase CLI
-- **No `supabase/` directory** — run `supabase init` then `supabase start`
-- **Stack not running** — run `supabase start`
+### Path A — New project
+**Detect:** No project files beyond dotfiles, `README`, and config files (e.g., empty directory or freshly created repo).
 
-**2. Verify Supabase MCP** — Confirm the `supabase` MCP server is connected. Required tools: `supabase:execute_sql`, `supabase:apply_migration`.
+**Do not run `supabase init` first.** Plan the project, scaffold it, then add Supabase into the existing structure.
 
-**3. Run the setup check** — Load the `database` skill and run its setup check (`assets/check_setup.sql`) via `supabase:execute_sql`. If `"ready": true` — proceed to development.
+1. **Plan the full project** — Decide the directory structure, framework, and how Supabase fits into it. Use the skills as guidelines for the database schema, API surface, and other components.
+2. **Scaffold the project** — Initialize the framework (e.g., `npx create-next-app`), create the directory structure, install dependencies. The project should have real structure before Supabase enters the picture.
+3. **Then add Supabase** — Run `supabase init` → `supabase start` → follow the [Setup Guide](../skills/database/references/setup.md). This happens inside an already-structured project, so `supabase/` lands in the right place alongside existing directories.
+
+### Path B — Existing project, adding Supabase
+**Detect:** Project files exist (source code, `package.json`, etc.) but no `supabase/` directory.
+
+1. Run `supabase init` → `supabase start`
+2. Follow the [Setup Guide](../skills/database/references/setup.md)
+3. Work within the existing project structure — do not reorganize existing directories
+
+### Path C — Existing Supabase project
+**Detect:** `supabase/` directory exists.
+
+1. **Verify local stack** — Run `supabase status` from the project root (bash, not MCP). If the stack isn't running, run `supabase start`. If the CLI is not found, the user must install it.
+2. **Verify Supabase MCP** — Confirm the `supabase` MCP server is connected. Required tools: `supabase:execute_sql`, `supabase:apply_migration`.
+3. **Run the setup check** — Load the `database` skill and run its setup check (`assets/check_setup.sql`) via `supabase:execute_sql`. If `"ready": true` — proceed to development.
+
+All three paths converge to the same state: local stack running, MCP verified, setup check passing.
 
 ---
 

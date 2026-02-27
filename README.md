@@ -56,6 +56,7 @@ The `@agentlink:supabase` agent preloads all four domain skills and enforces pre
 
 - **[About Agent Link](./docs/ABOUT.md)** — Principles, architecture, and design philosophy
 - **[Skill Catalog](./docs/CATALOG.md)** — Full catalog with status and roadmap
+- **[Website](https://agentlink.sh)** — Full manifesto, architecture overview, and waitlist
 
 ---
 
