@@ -36,6 +36,7 @@ Skills activate automatically when Claude detects a relevant task. You can also 
 - `/agentlink:rpc` — RPC-first data access, CRUD templates, pagination
 - `/agentlink:edge-functions` — `withSupabase` wrapper, webhooks, secrets
 - `/agentlink:auth` — RLS policies, RBAC, multi-tenancy, invitation flows
+- `/agentlink:frontend` — Supabase client setup, RPC calls, auth state, SSR
 
 ---
 

@@ -83,6 +83,20 @@ Skills that equip AI agents to build correctly on Supabase. Distributed as a Cla
 
 ---
 
+### 🌐 frontend
+
+> Supabase client integration for frontend applications. Client initialization, environment variables, RPC calls, auth state, type safety, and SSR.
+
+**Status:** ✅ Built
+
+**Owns:** Supabase client initialization (`@supabase/ssr`, `@supabase/supabase-js`), environment variable mapping per framework, `supabase.rpc()` usage from frontend code, generated type integration, `onAuthStateChange` patterns, session refresh, protected routes, SSR cookie handling.
+
+**References:** `ssr.md`, `auth_ui.md`
+
+**Not preloaded by the agent** — auto-activates when the task involves frontend-to-Supabase integration.
+
+---
+
 ## Future Skills
 
 ### 📊 analytics
@@ -161,10 +175,13 @@ agentlink/
 │   │   ├── SKILL.md          # withSupabase wrapper
 │   │   ├── references/
 │   │   └── assets/
-│   └── auth/
-│       ├── SKILL.md          # Auth, RLS, multi-tenancy
-│       ├── references/
-│       └── assets/
+│   ├── auth/
+│   │   ├── SKILL.md          # Auth, RLS, multi-tenancy
+│   │   ├── references/
+│   │   └── assets/
+│   └── frontend/
+│       ├── SKILL.md          # Supabase client integration
+│       └── references/
 ├── docs/
 └── README.md
 ```

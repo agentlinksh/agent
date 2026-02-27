@@ -34,9 +34,13 @@ Before starting, detect the project context and follow the appropriate path:
 
 **Do not run `supabase init` first.** Plan the project, scaffold it, then add Supabase into the existing structure.
 
-1. **Plan the full project** — Decide the directory structure, framework, and how Supabase fits into it. Use the skills as guidelines for the database schema, API surface, and other components.
-2. **Scaffold the project** — Initialize the framework (e.g., `npx create-next-app`), create the directory structure, install dependencies. The project should have real structure before Supabase enters the picture.
-3. **Then add Supabase** — Run `supabase init` → `supabase start` → follow the [Setup Guide](../skills/database/references/setup.md). This happens inside an already-structured project, so `supabase/` lands in the right place alongside existing directories.
+1. **Ask before planning** — You handle the Supabase backend. The user decides everything else. If the user hasn't already specified, ask about:
+   - **Frontend:** What framework? (Next.js, SvelteKit, React SPA, etc.) Or is this backend-only?
+   - **Project structure:** Any preferences for directory layout, monorepo, etc.
+   Don't assume or decide frontend/framework choices — if the request is vague ("build me a todo app"), ask.
+2. **Plan the full project** — Using the user's answers, decide the directory structure and how Supabase fits into it. Use the skills as guidelines for the database schema, API surface, and other components.
+3. **Scaffold the project** — Initialize the framework the user chose, create the directory structure, install dependencies. Skip if backend-only.
+4. **Then add Supabase** — Follow the [Setup Guide](../skills/database/references/setup.md).
 
 ### Path B — Existing project, adding Supabase
 **Detect:** Project files exist (source code, `package.json`, etc.) but no `supabase/` directory.
