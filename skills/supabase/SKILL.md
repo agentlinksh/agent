@@ -1,5 +1,5 @@
 ---
-name: supabase-development
+name: supabase
 description: Supabase development. Use for ANY backend work in Supabase projects — schema changes, database functions, RLS policies, API endpoints, edge functions, auth, multi-tenancy, or data access. Activate whenever the task involves Supabase features.
 license: MIT
 compatibility: Requires Supabase CLI and Supabase MCP server
