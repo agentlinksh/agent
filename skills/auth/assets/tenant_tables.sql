@@ -2,11 +2,9 @@
 -- TENANT TABLES: Multi-tenancy foundation
 -- =============================================================================
 -- Copy these into your project:
---   Tables    → supabase/schemas/20_tables/tenants.sql, memberships.sql, invitations.sql
---   Indexes   → supabase/schemas/40_indexes/memberships.sql
---   Auth fns  → supabase/schemas/50_functions/_auth/tenant.sql
---   API RPCs  → supabase/schemas/55_api/tenant.sql, invitation.sql
---   Policies  → supabase/schemas/70_policies/tenants.sql, memberships.sql
+--   Entities  → supabase/schemas/public/tenants.sql, memberships.sql, invitations.sql  (tables + indexes + policies)
+--   Auth fns  → supabase/schemas/public/_auth.sql
+--   API RPCs  → supabase/schemas/api/tenant.sql, invitation.sql
 -- =============================================================================
 
 -- Tenants

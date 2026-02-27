@@ -18,7 +18,7 @@ Agent Link is a set of composable skills that teach AI agents how to build compl
 claude --plugin-dir ./path/to/agentlinksh/skills
 ```
 
-All skills are namespaced under `agentlink:` — e.g., `/agentlink:backend-development`, `/agentlink:auth`.
+All skills are namespaced under `agentlink:` — e.g., `/agentlink:database`, `/agentlink:auth`.
 
 ### As Agent Skills
 
@@ -32,9 +32,13 @@ Works with Claude Code, Cursor, Copilot, and other agents that support the [Agen
 
 ## Skills
 
-### backend-development
+### supabase-development
 
-Schema-driven development workflow. Project setup, schema file organization, development loop (write SQL, apply live, iterate), migration workflow, type generation, naming conventions.
+Entrypoint for all Supabase backend work. Verifies prerequisites (CLI installed, local stack running for this project), enforces the architecture (schema isolation, RPC-first), and loads the specialized skills below.
+
+### database
+
+Schema files, migrations, project setup. Development loop (write SQL, apply live, iterate), type generation, naming conventions.
 
 ### rpc
 
@@ -59,7 +63,7 @@ Skills use progressive disclosure to keep context lean:
 3. **References** — loaded on demand from SKILL.md for detailed patterns
 4. **Assets** — ready-to-copy SQL and TypeScript files dropped into projects
 
-Claude loads multiple skills simultaneously when a task spans domains. A request like "add a new entity with RLS and an edge function" triggers `backend-development`, `rpc`, `auth`, and `edge-functions` together.
+Claude loads multiple skills simultaneously when a task spans domains. A request like "add a new entity with RLS and an edge function" triggers `supabase-development` which runs prerequisites and loads `database`, `rpc`, `auth`, and `edge-functions` skills as needed.
 
 ---
 

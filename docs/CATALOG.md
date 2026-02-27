@@ -6,7 +6,7 @@ Skills that equip AI agents to build correctly on Supabase. Distributed as a Cla
 
 ## Architecture
 
-**Plugin:** `agentlink` — all skills are namespaced under `agentlink:` (e.g., `/agentlink:backend-development`).
+**Plugin:** `agentlink` — all skills are namespaced under `agentlink:` (e.g., `/agentlink:database`).
 
 **Schema isolation** — The `public` schema is not exposed via the Data API. All client-facing operations go through functions in a dedicated `api` schema. Tables, internal functions, and auth helpers live in `public`, invisible to the REST API. This enforces the RPC-first pattern at the infrastructure level.
 
@@ -16,18 +16,28 @@ Skills that equip AI agents to build correctly on Supabase. Distributed as a Cla
 
 ---
 
-## Beta Skills
+## Skills
 
-### 🔧 backend-development
+### 🚀 supabase-development
 
-> Schema-driven development. How to set up, build, and evolve a Supabase database.
+> Entrypoint for all Supabase backend work. Verifies prerequisites, enforces architecture, loads specialized skills.
 
 **Status:** ✅ Built
 
-**Owns:** Project setup, schema file organization, development loop (write SQL + apply live), migration workflow, type generation, naming conventions, `api` schema creation and grants.
+**Owns:** Phase 0 prerequisites (`supabase status` check), schema isolation architecture, RPC-first philosophy, security context rules, skill routing.
+
+---
+
+### 🔧 database
+
+> Schema files, migrations, and project setup.
+
+**Status:** ✅ Built
+
+**Owns:** Schema file organization, development loop (write SQL + apply live), migration workflow, type generation, naming conventions, `api` schema creation and grants.
 
 **References:** `setup.md`, `development.md`, `naming_conventions.md`
-**Assets:** `check_setup.sql`, `setup.sql`, `seed.sql`, `entities.md`, `scaffold_schemas.sh`
+**Assets:** `check_setup.sql`, `setup.sql`, `seed.sql`, `scaffold_schemas.sh`
 
 ---
 
@@ -130,8 +140,10 @@ agentlink/
 ├── .claude-plugin/
 │   └── plugin.json           # Plugin manifest (name, version, author)
 ├── skills/
-│   ├── backend-development/
-│   │   ├── SKILL.md          # Schema-driven workflow
+│   ├── supabase/
+│   │   └── SKILL.md          # Entrypoint — prereqs, architecture, routing
+│   ├── database/
+│   │   ├── SKILL.md          # Schema files, migrations, setup
 │   │   ├── references/
 │   │   ├── assets/
 │   │   └── scripts/

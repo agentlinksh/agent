@@ -2,7 +2,7 @@
 -- COMMON RLS POLICIES: Reusable patterns
 -- =============================================================================
 -- These are templates — replace table names and column names with your own.
--- Copy the relevant patterns into supabase/schemas/70_policies/<table>.sql
+-- Copy the relevant patterns into the entity file: supabase/schemas/public/<table>.sql
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------

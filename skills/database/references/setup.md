@@ -3,6 +3,7 @@
 Run once per project to ensure the required infrastructure is in place. This corresponds to **Phase 0** in SKILL.md.
 
 ## Contents
+- Verify Local Stack
 - Verify Supabase MCP
 - Run the Setup Check
 - Enable Missing Extensions
@@ -14,7 +15,23 @@ Run once per project to ensure the required infrastructure is in place. This cor
 
 ---
 
-## 0. Verify Supabase MCP
+## 0. Verify Local Stack
+
+Run `supabase status` from the project root. This is the single check that confirms:
+
+- The Supabase CLI is installed
+- The project is initialized (`supabase/` directory exists)
+- The local database is running **for this project**
+
+**If the command fails**, follow this sequence:
+
+1. **CLI not found** → the user must install the Supabase CLI before proceeding
+2. **No `supabase/` directory** → run `supabase init` to initialize the project
+3. **Stack not running** → run `supabase start` to start the local development stack
+
+**Why this matters:** The Supabase MCP server may be connected to a different project's database. `supabase status` run from the project directory is the only way to confirm the local stack is running for the correct project.
+
+## 1. Verify Supabase MCP
 
 Confirm the `supabase` MCP server for local development is connected. The skill
 depends on two tools:
@@ -24,7 +41,7 @@ depends on two tools:
 
 If the server is not available, the user must configure it before proceeding.
 
-## 1. Run the Setup Check
+## 2. Run the Setup Check
 
 Load `assets/check_setup.sql` and execute it via `supabase:execute_sql`. The result is a JSON object:
 
@@ -39,7 +56,7 @@ Load `assets/check_setup.sql` and execute it via `supabase:execute_sql`. The res
 
 If `"ready": true`, skip to the normal development phases. Otherwise continue below for each `false` value.
 
-## 2. Enable Missing Extensions
+## 3. Enable Missing Extensions
 
 If `extensions.pg_net` or `extensions.vault` is `false`, apply a migration:
 
@@ -50,12 +67,12 @@ CREATE EXTENSION IF NOT EXISTS supabase_vault;
 
 Use `supabase:apply_migration` with a descriptive name like `enable_required_extensions`.
 
-## 3. Create Missing Internal Functions
+## 4. Create Missing Internal Functions
 
 If any function in the `functions` object is `false`:
 
 1. Load `assets/setup.sql` — it contains the full definitions for all three `_internal_*` functions.
-2. Copy the relevant function(s) into the project's `supabase/schemas/50_functions/_internal/` directory.
+2. Copy the relevant function(s) into the project's `supabase/schemas/public/_internal.sql`.
 3. Apply via `supabase:apply_migration`.
 
 The three functions and their purposes:
@@ -66,7 +83,7 @@ The three functions and their purposes:
 | `_internal_call_edge_function(text, jsonb)` | Calls an Edge Function asynchronously via pg_net |
 | `_internal_call_edge_function_sync(text, jsonb, integer)` | Synchronous wrapper with timeout/polling |
 
-## 4. Store Missing Vault Secrets
+## 5. Store Missing Vault Secrets
 
 If any secret in the `secrets` object is `false`, the values need to be stored in Vault. See [`assets/seed.sql`](../assets/seed.sql) for the full explanation of why these secrets are needed and important local development notes.
 
@@ -93,7 +110,7 @@ SELECT vault.create_secret('<value>', '<secret_name>');
 
 The script handles upserts — it will update existing secrets if they already exist.
 
-## 5. Add Vault Secrets to Seed File
+## 6. Add Vault Secrets to Seed File
 
 Vault secrets are wiped on every `supabase db reset` because the database is fully recreated. To persist them, append the vault secret SQL to the project's `supabase/seed.sql` (the CLI runs this file automatically after every reset).
 
@@ -103,11 +120,11 @@ Vault secrets are wiped on every `supabase db reset` because the database is ful
 
 This is for local development only. Production secrets are managed through the Supabase Dashboard.
 
-## 6. Re-run the Check
+## 7. Re-run the Check
 
 Run `assets/check_setup.sql` again via `supabase:execute_sql` and confirm `"ready": true` before proceeding to Phase 1.
 
-## 7. Scaffold Schema Structure (if needed)
+## 8. Scaffold Schema Structure (if needed)
 
 If `supabase/schemas/` doesn't exist yet, run the scaffold script:
 

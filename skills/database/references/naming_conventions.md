@@ -55,11 +55,14 @@ Consistent naming across all database objects.
 
 ## Schema File Naming
 
-| Folder | File Name | Content |
-|--------|-----------|---------|
-| `20_tables/` | `{entity_plural}.sql` | `charts.sql` |
-| `50_functions/` | `{entity_singular}.sql` | `chart.sql` |
-| `50_functions/_auth/` | `{entity_singular}.sql` | `chart.sql` |
-| `70_policies/` | `{entity_plural}.sql` | `charts.sql` |
+| Folder | File Name | Contains |
+|--------|-----------|----------|
+| `public/` | `{entity_plural}.sql` | `charts.sql` — table + indexes + triggers + policies |
+| `public/` | `_auth.sql` | Shared `_auth_*` helper functions |
+| `public/` | `_internal.sql` | Shared `_internal_*` utility functions |
+| `api/` | `{entity_singular}.sql` | `chart.sql` — `api.*` functions + grants |
+| (root) | `_schemas.sql` | `CREATE SCHEMA api;` + role grants |
 
-Note: Tables use plural, function files use singular (matches function naming).
+- `public/` files use **plural** names (match table names)
+- `api/` files use **singular** names (match entity)
+- `_` prefix = shared/infrastructure files

@@ -197,7 +197,7 @@ USING (
 ### Core tables
 
 ```sql
--- supabase/schemas/20_tables/tenants.sql
+-- supabase/schemas/public/tenants.sql
 CREATE TABLE IF NOT EXISTS public.tenants (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
@@ -208,7 +208,7 @@ CREATE TABLE IF NOT EXISTS public.tenants (
 
 ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
 
--- supabase/schemas/20_tables/memberships.sql
+-- supabase/schemas/public/memberships.sql
 CREATE TABLE IF NOT EXISTS public.memberships (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
@@ -220,7 +220,7 @@ CREATE TABLE IF NOT EXISTS public.memberships (
 
 ALTER TABLE public.memberships ENABLE ROW LEVEL SECURITY;
 
--- supabase/schemas/20_tables/invitations.sql
+-- supabase/schemas/public/invitations.sql
 CREATE TABLE IF NOT EXISTS public.invitations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,

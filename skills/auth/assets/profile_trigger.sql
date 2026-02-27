@@ -2,11 +2,9 @@
 -- PROFILE TRIGGER: Auto-create profile on sign-up
 -- =============================================================================
 -- Copy these into your project:
---   Table     → supabase/schemas/20_tables/profiles.sql
---   Trigger   → supabase/schemas/60_triggers/profiles.sql
---   Index     → supabase/schemas/40_indexes/profiles.sql
---   Policies  → supabase/schemas/70_policies/profiles.sql
---   API RPCs  → supabase/schemas/55_api/profile.sql
+--   Entity    → supabase/schemas/public/profiles.sql  (table + indexes + triggers + policies)
+--   Auth      → supabase/schemas/public/_auth.sql     (if auth functions needed)
+--   API RPCs  → supabase/schemas/api/profile.sql
 -- =============================================================================
 
 -- Table

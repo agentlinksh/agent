@@ -25,41 +25,35 @@ echo "   Location: $SCHEMAS_DIR"
 echo ""
 
 # Create main directories
-mkdir -p "$SCHEMAS_DIR/10_types"
-mkdir -p "$SCHEMAS_DIR/20_tables"
-mkdir -p "$SCHEMAS_DIR/30_constraints"
-mkdir -p "$SCHEMAS_DIR/40_indexes"
-mkdir -p "$SCHEMAS_DIR/50_functions/_internal"
-mkdir -p "$SCHEMAS_DIR/50_functions/_auth"
-mkdir -p "$SCHEMAS_DIR/60_triggers"
-mkdir -p "$SCHEMAS_DIR/70_policies"
-mkdir -p "$SCHEMAS_DIR/80_views"
+mkdir -p "$SCHEMAS_DIR/public"
+mkdir -p "$SCHEMAS_DIR/api"
+
+# Create _schemas.sql for schema creation + grants
+if [ ! -f "$SCHEMAS_DIR/_schemas.sql" ]; then
+  cat > "$SCHEMAS_DIR/_schemas.sql" << 'SQLEOF'
+-- Schema creation and role grants
+CREATE SCHEMA IF NOT EXISTS api;
+
+GRANT USAGE ON SCHEMA api TO anon, authenticated;
+SQLEOF
+  echo "✅ Created _schemas.sql"
+else
+  echo "ℹ️  _schemas.sql already exists, skipping"
+fi
 
 # Create .gitkeep files to preserve empty directories
-touch "$SCHEMAS_DIR/10_types/.gitkeep"
-touch "$SCHEMAS_DIR/20_tables/.gitkeep"
-touch "$SCHEMAS_DIR/30_constraints/.gitkeep"
-touch "$SCHEMAS_DIR/40_indexes/.gitkeep"
-touch "$SCHEMAS_DIR/50_functions/.gitkeep"
-touch "$SCHEMAS_DIR/50_functions/_internal/.gitkeep"
-touch "$SCHEMAS_DIR/50_functions/_auth/.gitkeep"
-touch "$SCHEMAS_DIR/60_triggers/.gitkeep"
-touch "$SCHEMAS_DIR/70_policies/.gitkeep"
-touch "$SCHEMAS_DIR/80_views/.gitkeep"
+touch "$SCHEMAS_DIR/public/.gitkeep"
+touch "$SCHEMAS_DIR/api/.gitkeep"
 
+echo ""
 echo "✅ Created directory structure:"
 echo ""
 echo "   supabase/schemas/"
-echo "   ├── 10_types/"
-echo "   ├── 20_tables/"
-echo "   ├── 30_constraints/"
-echo "   ├── 40_indexes/"
-echo "   ├── 50_functions/"
-echo "   │   ├── _internal/"
-echo "   │   └── _auth/"
-echo "   ├── 60_triggers/"
-echo "   ├── 70_policies/"
-echo "   └── 80_views/"
+echo "   ├── _schemas.sql        # CREATE SCHEMA api; + role grants"
+echo "   ├── public/             # Entity files (table + indexes + triggers + policies)"
+echo "   │   ├── _auth.sql       # Shared _auth_* helper functions"
+echo "   │   └── _internal.sql   # Shared _internal_* utility functions"
+echo "   └── api/                # Client-facing RPCs (api.* functions + grants)"
 echo ""
 
 # Create ENTITIES.md if it doesn't exist
@@ -73,13 +67,13 @@ This file tracks all database entities in the project. Keep this in sync when cr
 
 List all entities (singular form used for naming functions):
 
-- 
+-
 
 ## Schema File Mapping
 
-| Entity | Table | Constraints | Indexes | Functions | Auth | Triggers | Policies | Views |
-|--------|-------|-------------|---------|-----------|------|----------|----------|-------|
-| | | | | | | | | |
+| Entity | Entity File | API Functions |
+|--------|-------------|---------------|
+| | `public/<plural>.sql` | `api/<singular>.sql` |
 
 ## Function Inventory
 
@@ -109,7 +103,7 @@ fi
 
 echo ""
 echo "🎉 Done! Next steps:"
-echo "   1. Copy setup.sql functions to 50_functions/_internal/ (from assets/setup.sql)"
+echo "   1. Copy setup.sql functions to public/_internal.sql (from assets/setup.sql)"
 echo "   2. Configure Vault secrets"
 echo "   3. Add your first entity to ENTITIES.md"
 echo "   4. Start creating schema files"

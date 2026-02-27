@@ -49,10 +49,15 @@ SELECT jsonb_build_object(
     'SB_SECRET_KEY',
       EXISTS (SELECT 1 FROM vault.secrets WHERE name = 'SB_SECRET_KEY')
   ),
+  'api_schema', EXISTS (
+    SELECT 1 FROM information_schema.schemata WHERE schema_name = 'api'
+  ),
   'ready', (
     -- All extensions present
     EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_net')
     AND EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'supabase_vault')
+    -- api schema exists
+    AND EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'api')
     -- All functions present
     AND EXISTS (
       SELECT 1 FROM information_schema.routines

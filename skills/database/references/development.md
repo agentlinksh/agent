@@ -61,17 +61,17 @@ No migrations are created. The agent works directly against the live database wh
 Generate a single migration capturing all un-migrated changes:
 
 ```bash
-supabase db diff -f descriptive_migration_name
+supabase db diff --use-pg-delta -f descriptive_migration_name
 ```
 
-This compares the live local database against the migrations folder and outputs everything that's different as one migration file.
+This compares the live local database against the migrations folder and outputs everything that's different as one migration file. The `--use-pg-delta` flag automatically resolves statement ordering (tables before indexes, functions before triggers, etc.).
 
 ### Review
 
 Check the generated file in `supabase/migrations/`:
 
 - Verify all changes are captured
-- Confirm the order makes sense (tables before indexes, functions before policies)
+- Statement ordering is handled automatically by `--use-pg-delta`
 - If any `supabase:execute_sql` data fixes are needed for the migration to replay cleanly, add them manually
 
 ### Verify (requires user confirmation)
@@ -111,8 +111,9 @@ Example: Adding a `readings` entity to a project that already has `charts`.
 - reading  ← new
 ```
 
-**2. Create the table** — `supabase/schemas/20_tables/readings.sql`:
+**2. Create the entity file** — `supabase/schemas/public/readings.sql`:
 ```sql
+-- Table
 CREATE TABLE IF NOT EXISTS public.readings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   chart_id uuid NOT NULL REFERENCES public.charts(id) ON DELETE CASCADE,
@@ -124,16 +125,31 @@ CREATE TABLE IF NOT EXISTS public.readings (
 );
 
 ALTER TABLE public.readings ENABLE ROW LEVEL SECURITY;
-```
 
-**3. Add indexes** — `supabase/schemas/40_indexes/readings.sql`:
-```sql
+-- Indexes
 CREATE INDEX IF NOT EXISTS idx_readings_chart_id ON public.readings(chart_id);
 CREATE INDEX IF NOT EXISTS idx_readings_user_id ON public.readings(user_id);
 CREATE INDEX IF NOT EXISTS idx_readings_created_at ON public.readings(created_at DESC);
+
+-- RLS policies
+CREATE POLICY "Users can read own or public readings"
+ON public.readings FOR SELECT
+USING (_auth_reading_can_read(id));
+
+CREATE POLICY "Users can insert own readings"
+ON public.readings FOR INSERT
+WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can update own readings"
+ON public.readings FOR UPDATE
+USING (_auth_reading_is_owner(id));
+
+CREATE POLICY "Users can delete own readings"
+ON public.readings FOR DELETE
+USING (_auth_reading_is_owner(id));
 ```
 
-**4. Create auth functions** — `supabase/schemas/50_functions/_auth/reading.sql`:
+**3. Add auth functions** — `supabase/schemas/public/_auth.sql`:
 ```sql
 CREATE OR REPLACE FUNCTION _auth_reading_can_read(p_reading_id uuid)
 RETURNS boolean
@@ -166,9 +182,9 @@ END;
 $$;
 ```
 
-**5. Create business logic** — `supabase/schemas/50_functions/reading.sql`:
+**4. Create API functions** — `supabase/schemas/api/reading.sql`:
 ```sql
-CREATE OR REPLACE FUNCTION reading_create(
+CREATE OR REPLACE FUNCTION api.reading_create(
   p_chart_id uuid,
   p_content jsonb DEFAULT '{}'
 )
@@ -183,7 +199,7 @@ BEGIN
   INSERT INTO public.readings (chart_id, user_id, content)
   VALUES (p_chart_id, auth.uid(), p_content)
   RETURNING id INTO v_reading_id;
-  
+
   RETURN jsonb_build_object(
     'success', true,
     'reading_id', v_reading_id
@@ -191,7 +207,9 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION reading_get_by_id(p_reading_id uuid)
+GRANT EXECUTE ON FUNCTION api.reading_create(uuid, jsonb) TO authenticated;
+
+CREATE OR REPLACE FUNCTION api.reading_get_by_id(p_reading_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -209,39 +227,22 @@ BEGIN
   ) INTO v_result
   FROM public.readings r
   WHERE r.id = p_reading_id;
-  
+
   RETURN v_result;
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION api.reading_get_by_id(uuid) TO authenticated;
 ```
 
-**6. Add RLS policies** — `supabase/schemas/70_policies/readings.sql`:
-```sql
-CREATE POLICY "Users can read own or public readings"
-ON public.readings FOR SELECT
-USING (_auth_reading_can_read(id));
+**5. Apply everything** — Run each file's SQL via `supabase:execute_sql` in order: auth functions → entity file → API functions.
 
-CREATE POLICY "Users can insert own readings"
-ON public.readings FOR INSERT
-WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Users can update own readings"
-ON public.readings FOR UPDATE
-USING (_auth_reading_is_owner(id));
-
-CREATE POLICY "Users can delete own readings"
-ON public.readings FOR DELETE
-USING (_auth_reading_is_owner(id));
-```
-
-**7. Apply everything** — Run each file's SQL via `supabase:execute_sql` in order: table → indexes → auth functions → business functions → policies.
-
-**8. Generate types:**
+**6. Generate types:**
 ```bash
 supabase gen types typescript --local > src/types/database.ts
 ```
 
-**9. Update entity registry** in `ENTITIES.md` with the complete mapping.
+**7. Update entity registry** in `ENTITIES.md` with the complete mapping.
 
 ---
 
@@ -249,7 +250,7 @@ supabase gen types typescript --local > src/types/database.ts
 
 Example: Adding `archived_at` to `readings`.
 
-**1. Update the table definition** in `supabase/schemas/20_tables/readings.sql`:
+**1. Update the table definition** in `supabase/schemas/public/readings.sql`:
 ```sql
 -- Add to the CREATE TABLE (for fresh setups)
 archived_at timestamptz DEFAULT NULL
@@ -260,14 +261,14 @@ archived_at timestamptz DEFAULT NULL
 ALTER TABLE public.readings ADD COLUMN IF NOT EXISTS archived_at timestamptz DEFAULT NULL;
 ```
 
-**3. Add index** if needed — `supabase/schemas/40_indexes/readings.sql`:
+**3. Add index** if needed — `supabase/schemas/public/readings.sql`:
 ```sql
 CREATE INDEX IF NOT EXISTS idx_readings_archived_at 
 ON public.readings(archived_at) 
 WHERE archived_at IS NOT NULL;
 ```
 
-**4. Add the function** — `supabase/schemas/50_functions/reading.sql`:
+**4. Add the function** — `supabase/schemas/api/reading.sql`:
 ```sql
 CREATE OR REPLACE FUNCTION reading_archive(p_reading_id uuid)
 RETURNS jsonb
@@ -307,7 +308,7 @@ supabase gen types typescript --local > src/types/database.ts
 
 Example: Auto-update `updated_at` on row changes.
 
-**1. Create trigger function** (once per project) — `supabase/schemas/50_functions/_internal/set_updated_at.sql`:
+**1. Create trigger function** (once per project) — `supabase/schemas/public/_internal.sql`:
 ```sql
 CREATE OR REPLACE FUNCTION _internal_set_updated_at()
 RETURNS trigger
@@ -320,7 +321,7 @@ END;
 $$;
 ```
 
-**2. Create trigger** — `supabase/schemas/60_triggers/readings.sql`:
+**2. Create trigger** — `supabase/schemas/public/readings.sql`:
 ```sql
 DROP TRIGGER IF EXISTS trg_readings_updated_at ON public.readings;
 CREATE TRIGGER trg_readings_updated_at

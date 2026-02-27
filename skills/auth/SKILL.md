@@ -40,7 +40,7 @@ Client → api.chart_get_by_id()  → RLS filters by user → returns only allow
 User metadata belongs in a `profiles` table, not in Supabase Auth metadata. Create profiles automatically with a trigger:
 
 ```sql
--- Table: supabase/schemas/20_tables/profiles.sql
+-- supabase/schemas/public/profiles.sql
 CREATE TABLE IF NOT EXISTS public.profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email text,
@@ -54,7 +54,8 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ```
 
 ```sql
--- Trigger: supabase/schemas/60_triggers/profiles.sql
+-- Trigger function: supabase/schemas/public/_internal.sql
+-- Trigger: supabase/schemas/public/profiles.sql
 CREATE OR REPLACE FUNCTION _internal_handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -81,7 +82,7 @@ CREATE TRIGGER trg_auth_users_new_user
 ### Profile RPCs
 
 ```sql
--- supabase/schemas/55_api/profile.sql
+-- supabase/schemas/api/profile.sql
 CREATE OR REPLACE FUNCTION api.profile_get()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -150,7 +151,7 @@ RLS is always enabled on every table. Policies filter rows based on who's asking
 When the table has a `user_id` column and each row belongs to one user:
 
 ```sql
--- supabase/schemas/70_policies/charts.sql
+-- supabase/schemas/public/charts.sql
 CREATE POLICY "Users can read own charts"
 ON public.charts FOR SELECT
 USING (user_id = auth.uid());
@@ -175,7 +176,7 @@ This is the simplest pattern. Use it when there's no tenant/team concept — the
 When access checks are more complex than a single column comparison, use `_auth_*` functions:
 
 ```sql
--- Auth function: supabase/schemas/50_functions/_auth/chart.sql
+-- supabase/schemas/public/_auth.sql
 CREATE OR REPLACE FUNCTION _auth_chart_can_read(p_chart_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql

@@ -1,8 +1,8 @@
 -- =============================================================================
 -- SETUP: Internal Utility Functions
 -- =============================================================================
--- Defines the _internal_* functions required by the backend-development skill.
--- Copy these into supabase/schemas/50_functions/_internal/ in your project.
+-- Defines the _internal_* functions required by the database skill.
+-- Copy these into supabase/schemas/public/_internal.sql in your project.
 --
 -- Before applying these functions, ensure Phase 0 (Setup Verification) passes:
 --   1. Run check_setup.sql via supabase:execute_sql to see what's missing.
