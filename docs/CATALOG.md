@@ -151,6 +151,80 @@ Skills that equip AI agents to build correctly on Supabase. Distributed as a Cla
 
 ---
 
+## Recommended Companions
+
+Community-maintained skills that enhance Agent Link workflows. Install separately via `npx skills add`.
+
+### 🐘 supabase-postgres-best-practices (Required)
+
+> Postgres performance optimization and best practices from Supabase.
+
+**Install:** `npx skills add supabase/agent-skills@supabase-postgres-best-practices`
+
+**Enhances:** `database` — invoked after every schema change, before generating types.
+
+---
+
+### 🎨 frontend-design
+
+> Create distinctive, production-grade frontend interfaces with high design quality.
+
+**Install:** `npx skills add anthropics/skills@frontend-design`
+
+**Enhances:** `frontend` — invoked during project planning when UI components or pages are being designed.
+
+---
+
+### ⚛️ vercel-react-best-practices
+
+> React best practices from Vercel.
+
+**Install:** `npx skills add vercel-labs/agent-skills@vercel-react-best-practices`
+
+**Enhances:** `frontend` — invoked during React component work. Only for React projects.
+
+---
+
+### ▲ next-best-practices
+
+> Next.js best practices from Vercel.
+
+**Install:** `npx skills add vercel-labs/next-skills --skill next-best-practices`
+
+**Enhances:** `frontend` — invoked during Next.js-specific work. Only for Next.js projects.
+
+---
+
+### ✉️ resend-skills
+
+> Resend API integration and email sending.
+
+**Install:** `npx skills add resend/resend-skills`
+
+**Enhances:** `auth` — invoked when setting up auth email hooks (Send Email hook).
+
+---
+
+### 📧 email-best-practices
+
+> Email deliverability, formatting, and content guidelines.
+
+**Install:** `npx skills add resend/email-best-practices`
+
+**Enhances:** `auth` — invoked when setting up auth email hooks (Send Email hook).
+
+---
+
+### 💌 react-email
+
+> Email template components with React Email.
+
+**Install:** `npx skills add resend/react-email`
+
+**Enhances:** `auth` — invoked when setting up auth email hooks (Send Email hook).
+
+---
+
 ## Plugin Structure
 
 ```

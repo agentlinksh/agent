@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0] - 2026-02-27
+
+### Added
+
+- Recommended Companions section in CATALOG.md — curated community skills that enhance Agent Link workflows (supabase-postgres-best-practices, frontend-design, vercel-react-best-practices, next-best-practices, resend-skills, email-best-practices, react-email)
+- CHANGELOG.md
+
 ## [0.2.0] - 2026-02-27
 
 ### Changed

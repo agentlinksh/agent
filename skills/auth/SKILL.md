@@ -216,6 +216,22 @@ Tenant context comes from JWT custom claims (`auth.jwt() -> 'app_metadata' ->> '
 
 ---
 
+## Email Hooks with Resend
+
+Supabase Auth Hooks let you replace the default email sender with a custom Send Email hook backed by Resend. Three companion skills handle this integration:
+
+- **`resend-skills`** — Resend API integration and sending logic
+- **`email-best-practices`** — Deliverability, formatting, and content guidelines
+- **`react-email`** — Email template components with React Email
+
+If these companions are available, defer email hook implementation and template setup to them. Install all three:
+
+```bash
+npx skills add resend/resend-skills resend/email-best-practices resend/react-email
+```
+
+---
+
 ## Reference Files
 
 - **[🛡️ RLS Patterns](./references/rls_patterns.md)** — Tenant-scoped policies, RBAC, multi-tenancy model, invitation flows, JWT claims

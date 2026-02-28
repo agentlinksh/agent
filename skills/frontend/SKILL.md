@@ -234,6 +234,18 @@ Key concepts:
 
 ---
 
+## Companion Skills
+
+These community-maintained skills enhance frontend workflows when installed alongside Agent Link:
+
+- **`frontend-design`** — Invoke during project planning when UI components or pages are being designed. Provides design patterns and component architecture guidance.
+- **`vercel-react-best-practices`** — Invoke during React component work. Only applicable if the project uses React.
+- **`next-best-practices`** — Invoke during Next.js-specific work (routing, server components, data fetching). Only applicable if the project uses Next.js.
+
+If available, these skills are invoked automatically at the right points in the workflow. They are not required — the frontend skill works without them.
+
+---
+
 ## Reference Files
 
 - **[🌐 SSR Patterns](./references/ssr.md)** — `@supabase/ssr` setup, middleware, cookie handling for Next.js and SvelteKit

@@ -56,6 +56,9 @@ Files are grouped by Postgres schema (`public/`, `api/`) with entity-centric fil
 2. **Apply live** — Run the same SQL via `supabase:execute_sql`
 3. **Fix errors** with more SQL — never reset the database
 4. **Iterate** until the feature is complete
+
+> **Companion:** If `supabase-postgres-best-practices` is available, invoke it to review schema changes before proceeding.
+
 5. **Generate types** — `supabase gen types typescript --local > src/types/database.ts`
 6. **Create migration** — `supabase db diff --use-pg-delta -f descriptive_migration_name`
 

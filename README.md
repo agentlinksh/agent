@@ -91,6 +91,34 @@ The agent requires a Supabase MCP server connected to `http://localhost:54321/mc
 
 ---
 
+## Companion Skills
+
+Community-maintained skills that enhance Agent Link workflows. Install separately — they activate automatically when available.
+
+**Required:**
+
+```bash
+npx skills add supabase/agent-skills@supabase-postgres-best-practices
+```
+
+**Recommended (frontend):**
+
+```bash
+npx skills add anthropics/skills@frontend-design
+npx skills add vercel-labs/agent-skills@vercel-react-best-practices  # React projects
+npx skills add vercel-labs/next-skills --skill next-best-practices   # Next.js projects
+```
+
+**Optional (email integration):**
+
+```bash
+npx skills add resend/resend-skills resend/email-best-practices resend/react-email
+```
+
+See the [Skill Catalog](./docs/CATALOG.md) for details on what each companion provides.
+
+---
+
 ## Documentation
 
 - **[About Agent Link](./docs/ABOUT.md)** — Principles, architecture, and design philosophy

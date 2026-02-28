@@ -62,6 +62,19 @@ Before starting, detect the project context and follow the appropriate path:
 
 All three paths converge to the same state: local stack running, MCP verified, setup check passing. After `supabase start`, always verify the Supabase MCP (see Path C step 2).
 
+### Companion Skills
+
+After prerequisites pass, check which companion skills are available. Companions are community-maintained skills installed separately via `npx skills add` — they enhance Agent Link workflows but are not part of this plugin.
+
+Present any missing companions and ask the user:
+- **All recommended** — install all missing companions
+- **Required only** — install only `supabase-postgres-best-practices`
+- **Skip** — continue without them
+
+After installing, tell the user: companion skills become available in the next conversation, not the current one.
+
+See the [Companion Skills](#companion-skills) section for the full catalog and integration rules.
+
 ---
 
 ## Architecture
@@ -166,3 +179,29 @@ Use `auth` skill.
 | Internal | `_internal_{name}` | DEFINER |
 
 Use `rpc` skill.
+
+---
+
+## Companion Skills
+
+Companion skills are community-maintained skills installed separately via `npx skills add`. They enhance Agent Link workflows but are not part of this plugin. When available, invoke them at the integration points described below.
+
+### Catalog
+
+| Skill | Install | Required | Used By | When |
+|-------|---------|----------|---------|------|
+| `supabase-postgres-best-practices` | `npx skills add supabase/agent-skills@supabase-postgres-best-practices` | Yes | `database` | Every schema change |
+| `frontend-design` | `npx skills add anthropics/skills@frontend-design` | No | `frontend` | Planning UI components/pages |
+| `vercel-react-best-practices` | `npx skills add vercel-labs/agent-skills@vercel-react-best-practices` | No | `frontend` | React projects |
+| `next-best-practices` | `npx skills add vercel-labs/next-skills --skill next-best-practices` | No | `frontend` | Next.js projects |
+| `resend-skills` | `npx skills add resend/resend-skills` | No | `auth` | Email integration |
+| `email-best-practices` | `npx skills add resend/email-best-practices` | No | `auth` | Email integration |
+| `react-email` | `npx skills add resend/react-email` | No | `auth` | Email templates |
+
+### Integration Rules
+
+- **`supabase-postgres-best-practices`** — After every schema change, before generating types. Invoke it to review SQL for performance and best practices.
+- **`frontend-design`** — During project planning when UI components or pages are being designed. Invoke it to guide component architecture and visual design.
+- **`vercel-react-best-practices`** — During React component work. Only invoke if the project uses React.
+- **`next-best-practices`** — During Next.js-specific work (routing, server components, data fetching). Only invoke if the project uses Next.js.
+- **Resend skills** (`resend-skills`, `email-best-practices`, `react-email`) — When setting up auth email hooks (Send Email hook). If available, defer email hook implementation and template setup to these skills.
