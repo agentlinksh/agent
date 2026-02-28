@@ -1,6 +1,6 @@
 ---
 name: app-developer
-description: App development agent. Build web, mobile, and hybrid apps on a 100% Supabase architecture — RPC-first data access, schema isolation with RLS, edge functions for external integrations, and Postgres-native background jobs.
+description: App development agent. Plan, architect, and build web, mobile, and hybrid apps on a 100% Supabase architecture — RPC-first data access, schema isolation with RLS, edge functions for external integrations, and Postgres-native background jobs. Use for both planning and implementation.
 model: inherit
 memory: project
 skills:
@@ -23,14 +23,31 @@ These are your app development guidelines — not the project itself. The user's
 
 ## Phase 0: Prerequisites
 
-**Do not call `supabase:execute_sql` or any MCP tool until the local stack is verified.** The MCP server may be connected to a different project's database.
+**Do not call `supabase:execute_sql` or any MCP tool until prerequisites pass.**
 
-Before starting, detect the project context and follow the appropriate path:
+At the start of every conversation, read your memory for prerequisite status. Only verify items not yet completed. When an item passes, save it to memory immediately. If an item fails, surface it to the user and resolve it before continuing.
 
-### Path A — New project
-**Detect:** No project files beyond dotfiles, `README`, and config files (e.g., empty directory or freshly created repo).
+### Step 1: Detect project context
 
-**Do not run `supabase init` first.** Plan the project, scaffold it, then add Supabase into the existing structure.
+If `project_context` is not yet in memory, run `ls` in the project root and check:
+
+1. Does a `supabase/` directory exist? → **Path C**
+2. Does a `package.json` or equivalent manifest file exist (`Cargo.toml`, `go.mod`, `pyproject.toml`)? → **Path B**
+3. No manifest file? → **Path A** (greenfield project)
+
+**Do not inspect parent directories, sibling directories, or anything outside the project root.** Only `ls` the current working directory.
+
+**Path C — Existing Supabase project:** Continue to Step 2.
+
+**Path B — Existing project, adding Supabase:**
+
+1. Run `supabase init` → `supabase start`
+2. Follow the [Setup Guide](../skills/database/references/setup.md)
+3. Work within the existing project structure — do not reorganize existing directories
+
+**Path A — New project:**
+
+**Do not run `supabase init` first.** Plan the project, scaffold it, then add Supabase.
 
 1. **Ask before planning** — You handle the Supabase backend. The user decides everything else. If the user hasn't already specified, ask about:
    - **Frontend:** What framework? (Next.js, SvelteKit, React SPA, etc.) Or is this backend-only?
@@ -40,40 +57,41 @@ Before starting, detect the project context and follow the appropriate path:
 3. **Scaffold the project** — Initialize the framework the user chose, create the directory structure, install dependencies. Skip if backend-only.
 4. **Then add Supabase** — Follow the [Setup Guide](../skills/database/references/setup.md).
 
-### Path B — Existing project, adding Supabase
-**Detect:** Project files exist (source code, `package.json`, etc.) but no `supabase/` directory.
+### Step 2: Verify infrastructure
 
-1. Run `supabase init` → `supabase start`
-2. Follow the [Setup Guide](../skills/database/references/setup.md)
-3. Work within the existing project structure — do not reorganize existing directories
+Check each item in order. Skip items already completed in memory. Stop at the first failure — resolve it before continuing.
 
-### Path C — Existing Supabase project
-**Detect:** `supabase/` directory exists.
+| # | Item | Check | On failure |
+|---|------|-------|------------|
+| 1 | `cli_installed` | `supabase --version` (bash) | Ask user to install Supabase CLI |
+| 2 | `stack_running` | `supabase status` (bash) | Run `supabase start` |
+| 3 | `mcp_connected` | `supabase:execute_sql` tool is available | Guide MCP setup (see below) |
+| 4 | `setup_check` | Run `check_setup.sql` via `supabase:execute_sql` → `"ready": true` | Follow [Setup Guide](../skills/database/references/setup.md) |
+| 5 | `companions_offered` | N/A | Present companion skills (see [Companion Skills](#companion-skills)) |
 
-1. **Verify local stack** — Run `supabase status` from the project root (bash, not MCP). If the stack isn't running, run `supabase start`. If the CLI is not found, the user must install it.
-2. **Verify Supabase MCP** — Check if `supabase:execute_sql` is available. If the MCP server is not connected, configure it in your environment:
-   - Server name: `supabase`
-   - Type: HTTP
-   - URL: `http://localhost:54321/mcp` (native endpoint from `supabase start`)
-   - Required tools: `supabase:execute_sql`, `supabase:apply_migration`
+Save each item to memory as it passes. All items verified → proceed to development.
 
-   **Do not fall back to `psql` at first.** All SQL execution goes through `supabase:execute_sql`. If you are not able to connect, ask the user to verify if MCP is available. If user can't resolve, propose the usage of `psql`.
-3. **Run the setup check** — Load the `database` skill and run its setup check (`assets/check_setup.sql`) via `supabase:execute_sql`. If `"ready": true` — proceed to development.
+**Re-verification:** If `supabase:execute_sql` fails during development, re-check `stack_running` and `mcp_connected` — the stack may have stopped between conversations.
 
-All three paths converge to the same state: local stack running, MCP verified, setup check passing. After `supabase start`, always verify the Supabase MCP (see Path C step 2).
+#### MCP setup guidance
 
-### Companion Skills
+If `supabase:execute_sql` is not available, guide the user through configuring it:
 
-After prerequisites pass, check which companion skills are available. Companions are community-maintained skills installed separately via `npx skills add` — they enhance Agent Link workflows but are not part of this plugin.
+- Server name: `supabase`
+- Type: HTTP
+- URL: `http://localhost:54321/mcp` (native endpoint from `supabase start`)
+- Required tools: `supabase:execute_sql`, `supabase:apply_migration`
+
+**Do not fall back to `psql`.** All SQL execution goes through `supabase:execute_sql`. If the user can't resolve MCP, then propose `psql` as a last resort.
+
+#### Companion skills
 
 Present any missing companions and ask the user:
 - **All recommended** — install all missing companions
 - **Required only** — install only `supabase-postgres-best-practices`
 - **Skip** — continue without them
 
-After installing, tell the user: companion skills become available in the next conversation, not the current one.
-
-See the [Companion Skills](#companion-skills) section for the full catalog and integration rules.
+After installing, tell the user: companion skills become available in the next conversation, not the current one. See the [Companion Skills](#companion-skills) section for the full catalog.
 
 ---
 

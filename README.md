@@ -1,5 +1,7 @@
 # Agent Link
 
+> **Beta** — Agent Link is under active development. Skills, agent behavior, and APIs may change between versions.
+
 An opinionated way to build on Supabase with AI agents.
 
 Agent Link is a Claude Code plugin with composable skills and an app development agent. Each skill covers a specific domain — schema development, RPCs, edge functions, auth, frontend — and Claude loads whichever skills are relevant to the current task automatically. The agent bundles all skills together with prerequisites and architecture enforcement.
@@ -67,9 +69,15 @@ The `@agentlink:app-developer` agent preloads all domain skills and enforces pre
 
 The app development agent ships with opinionated defaults that affect how it runs:
 
+### Prerequisites (Phase 0)
+
+The agent runs a prerequisite check at the start of every conversation. It tracks each item independently in memory — CLI installed, local stack running, MCP connected, setup scripts passed, companion skills offered. Verified items are skipped on subsequent conversations. Unresolved items are surfaced every time until fixed.
+
+This means if you haven't configured the Supabase MCP server yet, the agent will keep guiding you through it until it's set up. Once it's done, it won't ask again.
+
 ### Memory
 
-The agent has persistent memory scoped to your project (`.claude/agent-memory/app-developer/`). It builds knowledge across sessions — schema decisions, entity names, setup state, patterns specific to your codebase. You can:
+The agent has persistent memory scoped to your project (`.claude/agent-memory/app-developer/`). It builds knowledge across sessions — schema decisions, entity names, setup state, prerequisite status, patterns specific to your codebase. You can:
 
 - **Read it** to see what the agent remembers about your project
 - **Edit it** to correct mistakes or add context the agent should know
