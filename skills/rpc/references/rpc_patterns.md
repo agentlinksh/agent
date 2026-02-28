@@ -541,10 +541,10 @@ RETURN jsonb_build_object('success', true, 'chart_id', v_id);
 Schema-level default privileges handle grants automatically. The `_schemas.sql` file (created by `scaffold_schemas.sh`) contains:
 
 ```sql
-GRANT USAGE ON SCHEMA api TO anon, authenticated;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA api TO anon, authenticated;
+GRANT USAGE ON SCHEMA api TO anon, authenticated, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA api TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA api
-  GRANT EXECUTE ON FUNCTIONS TO anon, authenticated;
+  GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;
 ```
 
 Every function created in the `api` schema is automatically callable by both `anon` and `authenticated` roles. No per-function `GRANT EXECUTE` is needed.

@@ -35,14 +35,14 @@ if [ ! -f "$SCHEMAS_DIR/_schemas.sql" ]; then
 CREATE SCHEMA IF NOT EXISTS api;
 
 -- Grant usage so PostgREST can discover functions in the api schema
-GRANT USAGE ON SCHEMA api TO anon, authenticated;
+GRANT USAGE ON SCHEMA api TO anon, authenticated, service_role;
 
 -- Grant execute on all existing functions
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA api TO anon, authenticated;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA api TO anon, authenticated, service_role;
 
 -- Auto-grant execute on future functions
 ALTER DEFAULT PRIVILEGES IN SCHEMA api
-  GRANT EXECUTE ON FUNCTIONS TO anon, authenticated;
+  GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;
 SQLEOF
   echo "✅ Created _schemas.sql"
 else

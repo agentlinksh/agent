@@ -57,11 +57,13 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
 
   // Public client — reused across requests, respects RLS (no user context)
   const anonClient = createClient(supabaseUrl, publishableKey, {
+    db: { schema: "api" },
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
   // Service client — reused across requests, bypasses RLS
   const adminClient = createClient(supabaseUrl, secretKey, {
+    db: { schema: "api" },
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
@@ -102,6 +104,7 @@ export function withSupabase(config: WithSupabaseConfig, handler: Handler) {
 
             // User-scoped client — carries the caller's JWT, RLS filters by identity
             ctx.client = createClient(supabaseUrl, publishableKey, {
+              db: { schema: "api" },
               global: { headers: { Authorization: authHeader } },
             });
 
