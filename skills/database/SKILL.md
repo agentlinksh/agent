@@ -59,7 +59,7 @@ Files are grouped by Postgres schema (`public/`, `api/`) with entity-centric fil
 5. **Generate types** — `supabase gen types typescript --local > src/types/database.ts`
 6. **Create migration** — `supabase db diff --use-pg-delta -f descriptive_migration_name`
 
-> **📝 Load [Development](./references/development.md) for the full workflow, error handling, and worked examples (new entity, new field, triggers).**
+> **📝 Load [Development](./references/workflow.md) for the full workflow, error handling, and worked examples (new entity, new field, triggers).**
 
 The database is **never** reset unless the user explicitly requests it.
 
@@ -85,7 +85,7 @@ The database is **never** reset unless the user explicitly requests it.
 ## Reference Files
 
 - **[🛠️ Setup Guide](./references/setup.md)** — Phase 0 walkthrough: extensions, api schema, internal functions, vault secrets, seed file
-- **[📝 Development](./references/development.md)** — Development loop, migration workflow, worked examples
+- **[📝 Development](./references/workflow.md)** — Development loop, migration workflow, worked examples
 - **[📋 Naming Conventions](./references/naming_conventions.md)** — Tables, columns, functions, schema files
 
 ## Assets

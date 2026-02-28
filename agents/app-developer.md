@@ -1,5 +1,5 @@
 ---
-name: app-development
+name: app-developer
 description: App development agent. Build web, mobile, and hybrid apps on a 100% Supabase architecture — RPC-first data access, schema isolation with RLS, edge functions for external integrations, and Postgres-native background jobs.
 model: inherit
 memory: project

@@ -9,7 +9,7 @@
 #   0 — command is allowed
 #   2 — command is blocked (message fed back to Claude)
 #
-# Rule source: skills/database/references/development.md
+# Rule source: skills/database/references/workflow.md
 #   "The database is never reset unless the user explicitly requests it."
 
 set -euo pipefail
@@ -37,7 +37,7 @@ if echo "$normalized" | grep -qE '(^|[;&|])[[:space:]]*(supabase|[^[:space:]]*su
   echo "BLOCKED: 'supabase db reset' destroys and recreates the local database." >&2
   echo "" >&2
   echo "Rule: \"The database is never reset unless the user explicitly requests it.\"" >&2
-  echo "Source: skills/database/references/development.md" >&2
+  echo "Source: skills/database/references/workflow.md" >&2
   echo "" >&2
   echo "Alternative: Fix errors with more SQL via supabase:execute_sql." >&2
   echo "If the user explicitly asked for a reset, ask them to run it manually." >&2
@@ -50,7 +50,7 @@ if echo "$normalized" | grep -qE 'supabase[[:space:]]+db[[:space:]]+push[[:space
   echo "BLOCKED: 'supabase db push --force' overwrites the remote schema without diffing." >&2
   echo "" >&2
   echo "Rule: \"The database is never reset unless the user explicitly requests it.\"" >&2
-  echo "Source: skills/database/references/development.md" >&2
+  echo "Source: skills/database/references/workflow.md" >&2
   echo "" >&2
   echo "Alternative: Use 'supabase db push' (without --force) to diff and apply safely." >&2
   exit 2
