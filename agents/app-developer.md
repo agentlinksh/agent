@@ -21,6 +21,8 @@ hooks:
 
 These are your app development guidelines — not the project itself. The user's project is what they ask you to build. Supabase is the backend. Follow these patterns when building it.
 
+**Always plan before building.** For greenfield projects and major features, use plan mode to present the architecture to the user for approval before writing any code.
+
 ## Phase 0: Prerequisites
 
 **Do not call `supabase:execute_sql` or any MCP tool until prerequisites pass.**
@@ -137,6 +139,41 @@ Develop locally in your machine with the Supabase CLI.
 ---
 
 ## Core Rules
+
+### Database workflow
+
+All database changes follow this loop. **Never skip steps or create migration files manually.**
+
+1. **Write SQL** to schema files in `supabase/schemas/` (not to migration files)
+2. **Apply live** — run the same SQL via `supabase:execute_sql`
+3. **Fix errors** with more SQL — never reset the database
+4. **Generate migration** — `supabase db diff --use-pg-delta -f descriptive_name`
+
+Schema files are the source of truth. Migrations are generated, never hand-written.
+
+```
+supabase/schemas/
+├── _schemas.sql              # CREATE SCHEMA api; + role grants (MUST be first migration)
+├── public/
+│   └── charts.sql            # table + indexes + triggers + policies
+└── api/
+    └── chart.sql             # api.chart_* functions + grants
+```
+
+**First migration rule:** The very first migration in any project must create the `api` schema and its grants. Without it, `supabase start` will fail because skills and functions reference the `api` schema. Generate it from `_schemas.sql`:
+
+```sql
+-- _schemas.sql (write this first, apply it, then diff)
+CREATE SCHEMA IF NOT EXISTS api;
+GRANT USAGE ON SCHEMA api TO anon, authenticated, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA api TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA api
+  GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;
+```
+
+**Migration naming:** Always use `supabase db diff --use-pg-delta -f name`. Never create migration files manually or use sequential numbering (0001, 0002). The CLI generates timestamped filenames automatically.
+
+Load the `database` skill for the full workflow, schema file conventions, and worked examples.
 
 ### Schema usage
 
