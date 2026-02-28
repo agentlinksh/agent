@@ -30,12 +30,20 @@ Schema files are the canonical representation of your database. The live databas
 
 When building a feature, the agent:
 
-1. Writes the SQL in the appropriate schema file (see naming conventions)
-2. Runs the same SQL against the local database via `supabase:execute_sql`
+1. Writes the SQL in the appropriate schema file (see [naming conventions](./naming_conventions.md))
+2. Immediately applies the same SQL via `supabase:execute_sql` — every file write must be followed by an apply
 3. If something breaks, fixes it with more SQL — never resets
 4. Continues building until the feature is complete
 
-This applies to everything: tables, indexes, functions, policies, triggers. The agent writes the schema file AND applies it live. Always both.
+### Security Check
+
+After applying changes, run the Supabase security advisor:
+
+```
+supabase:get_advisors
+```
+
+Review the results and fix any findings (e.g., mutable `search_path`, missing `SECURITY INVOKER`) before continuing. This catches issues like unsafe function definitions early, before they reach migration.
 
 ### Fixing Errors
 
@@ -76,13 +84,7 @@ Check the generated file in `supabase/migrations/`:
 
 ### Verify (requires user confirmation)
 
-To confirm the migration replays cleanly from scratch:
-
-```bash
-supabase db reset
-```
-
-**This destroys and recreates the local database.** Only run this when the user explicitly asks for it. Never run it automatically. After reset, `seed.sql` runs automatically to restore Vault secrets and seed data.
+**DO NOT run `supabase db reset`.** This destroys and recreates the local database. If a reset is needed, tell the user and let them run it manually in their terminal. Never run it yourself, even if asked to "verify" or "test" a migration.
 
 ---
 
@@ -111,7 +113,42 @@ Example: Adding a `readings` entity to a project that already has `charts`.
 - reading  ← new
 ```
 
-**2. Create the entity file** — `supabase/schemas/public/readings.sql`:
+**2. Create auth functions** — `supabase/schemas/public/_auth.sql`:
+```sql
+CREATE OR REPLACE FUNCTION _auth_reading_can_read(p_reading_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.readings
+    WHERE id = p_reading_id
+    AND (user_id = auth.uid() OR is_public = true)
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION _auth_reading_is_owner(p_reading_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.readings
+    WHERE id = p_reading_id
+    AND user_id = auth.uid()
+  );
+END;
+$$;
+```
+
+Apply via `supabase:execute_sql`.
+
+**3. Create the entity file** — `supabase/schemas/public/readings.sql`:
 ```sql
 -- Table
 CREATE TABLE IF NOT EXISTS public.readings (
@@ -149,38 +186,7 @@ ON public.readings FOR DELETE
 USING (_auth_reading_is_owner(id));
 ```
 
-**3. Add auth functions** — `supabase/schemas/public/_auth.sql`:
-```sql
-CREATE OR REPLACE FUNCTION _auth_reading_can_read(p_reading_id uuid)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM public.readings
-    WHERE id = p_reading_id
-    AND (user_id = auth.uid() OR is_public = true)
-  );
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION _auth_reading_is_owner(p_reading_id uuid)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM public.readings
-    WHERE id = p_reading_id
-    AND user_id = auth.uid()
-  );
-END;
-$$;
-```
+Apply via `supabase:execute_sql`.
 
 **4. Create API functions** — `supabase/schemas/api/reading.sql`:
 ```sql
@@ -231,14 +237,14 @@ END;
 $$;
 ```
 
-**5. Apply everything** — Run each file's SQL via `supabase:execute_sql` in order: auth functions → entity file → API functions.
+Apply via `supabase:execute_sql`.
 
-**6. Generate types:**
+**5. Generate types:**
 ```bash
 supabase gen types typescript --local > src/types/database.ts
 ```
 
-**7. Update entity registry** in `ENTITIES.md` with the complete mapping.
+**6. Update entity registry** in `ENTITIES.md` with the complete mapping.
 
 ---
 
@@ -246,25 +252,23 @@ supabase gen types typescript --local > src/types/database.ts
 
 Example: Adding `archived_at` to `readings`.
 
-**1. Update the table definition** in `supabase/schemas/public/readings.sql`:
+**1. Update the table definition** in `supabase/schemas/public/readings.sql` and apply the ALTER via `supabase:execute_sql`:
 ```sql
--- Add to the CREATE TABLE (for fresh setups)
+-- Add to the CREATE TABLE definition (for fresh setups)
 archived_at timestamptz DEFAULT NULL
-```
 
-**2. Apply to live database** via `supabase:execute_sql`:
-```sql
+-- Apply to live database
 ALTER TABLE public.readings ADD COLUMN IF NOT EXISTS archived_at timestamptz DEFAULT NULL;
 ```
 
-**3. Add index** if needed — `supabase/schemas/public/readings.sql`:
+**2. Add index** if needed — update `supabase/schemas/public/readings.sql` and apply via `supabase:execute_sql`:
 ```sql
-CREATE INDEX IF NOT EXISTS idx_readings_archived_at 
-ON public.readings(archived_at) 
+CREATE INDEX IF NOT EXISTS idx_readings_archived_at
+ON public.readings(archived_at)
 WHERE archived_at IS NOT NULL;
 ```
 
-**4. Add the function** — `supabase/schemas/api/reading.sql`:
+**3. Add the function** — update `supabase/schemas/api/reading.sql` and apply via `supabase:execute_sql`:
 ```sql
 CREATE OR REPLACE FUNCTION reading_archive(p_reading_id uuid)
 RETURNS jsonb
@@ -277,23 +281,22 @@ BEGIN
   SET archived_at = now()
   WHERE id = p_reading_id
     AND archived_at IS NULL;
-  
+
   IF NOT FOUND THEN
     RETURN jsonb_build_object('success', false, 'error', 'Not found or already archived');
   END IF;
-  
+
   RETURN jsonb_build_object('success', true);
 END;
 $$;
 ```
 
-**5. Fix data errors** if any exist:
+**4. Fix data errors** if any exist, via `supabase:execute_sql`:
 ```sql
--- via supabase:execute_sql
 UPDATE public.readings SET archived_at = NULL WHERE archived_at = '0001-01-01';
 ```
 
-**6. Generate types:**
+**5. Generate types:**
 ```bash
 supabase gen types typescript --local > src/types/database.ts
 ```
@@ -304,11 +307,13 @@ supabase gen types typescript --local > src/types/database.ts
 
 Example: Auto-update `updated_at` on row changes.
 
-**1. Create trigger function** (once per project) — `supabase/schemas/public/_internal.sql`:
+**1. Create trigger function** (once per project) — `supabase/schemas/public/_internal.sql`. Apply via `supabase:execute_sql`:
 ```sql
 CREATE OR REPLACE FUNCTION _internal_set_updated_at()
 RETURNS trigger
 LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = ''
 AS $$
 BEGIN
   NEW.updated_at = now();
@@ -317,7 +322,7 @@ END;
 $$;
 ```
 
-**2. Create trigger** — `supabase/schemas/public/readings.sql`:
+**2. Create trigger** — `supabase/schemas/public/readings.sql`. Apply via `supabase:execute_sql`:
 ```sql
 DROP TRIGGER IF EXISTS trg_readings_updated_at ON public.readings;
 CREATE TRIGGER trg_readings_updated_at
@@ -325,5 +330,3 @@ CREATE TRIGGER trg_readings_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION _internal_set_updated_at();
 ```
-
-**3. Apply both** via `supabase:execute_sql` in order: function first, then trigger.
