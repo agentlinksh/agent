@@ -1,6 +1,6 @@
 ---
 name: edge-functions
-description: Supabase Edge Functions with the withSupabase wrapper pattern. Use when the task involves creating, modifying, or debugging edge functions, webhooks, external API integrations, service-to-service calls, or anything that runs in the Deno edge runtime. Also use for configuring edge function secrets, CORS, config.toml, or migrating from legacy Supabase API keys (anon/service_role to publishable/secret). Activate whenever the task touches supabase/functions/ or mentions edge functions.
+description: Supabase Edge Functions. Use when the task involves creating, modifying, or debugging edge functions, webhooks, external API integrations, service-to-service calls, or anything that runs in the Deno edge runtime. Also use for configuring edge function secrets, CORS, config.toml, or migrating from legacy Supabase API keys (anon/service_role to publishable/secret). Activate whenever the task touches supabase/functions/ or mentions edge functions.
 license: MIT
 compatibility: Requires Supabase CLI
 metadata:
@@ -12,7 +12,17 @@ metadata:
 
 Edge Functions handle everything that needs to talk to the outside world — webhooks, third-party APIs, scheduled triggers, service-to-service calls. They are **not** for CRUD or business logic (that belongs in database functions via RPCs).
 
-Every edge function uses the `withSupabase` wrapper. No exceptions.
+## IMPORTANT!
+
+- Every edge function uses the `withSupabase` wrapper. No exceptions.
+- Every edge function must have `verify_jwt = false` in `supabase/config.toml`:
+
+```toml
+[functions.my-function]
+verify_jwt = false
+```
+
+This is required because the `withSupabase` wrapper handles auth itself. If `verify_jwt` is left as `true` (the default), Supabase's gateway rejects requests before they reach the wrapper.
 
 ## Quick Start
 
@@ -44,18 +54,9 @@ Deno.serve(
 
     if (error) return errorResponse(error.message);
     return jsonResponse(data);
-  })
+  }),
 );
 ```
-
-4. **Add to `config.toml`** — every function needs `verify_jwt = false`:
-
-```toml
-[functions.my-function]
-verify_jwt = false
-```
-
-This is required because the `withSupabase` wrapper handles auth itself. If `verify_jwt` is left as `true` (the default), Supabase's gateway rejects requests before they reach the wrapper.
 
 5. **Test locally** — `supabase functions serve`
 
@@ -63,15 +64,15 @@ This is required because the `withSupabase` wrapper handles auth itself. If `ver
 
 ## Selection Guide
 
-| Scenario | Allow | Why |
-|----------|-------|-----|
-| User clicks a button in the app | `"user"` | Need user identity + RLS-scoped queries |
-| External webhook (Stripe, GitHub) | `"public"` | No Supabase JWT — validate webhook signature yourself |
-| Supabase Auth Hook | `"public"` | Called by Supabase Auth, not a user session |
-| Public API / health check | `"public"` | Open access, no auth needed |
-| Cron job / scheduled function | `"private"` | No user context — needs secret key validation |
-| Called from DB via `_internal_call_edge_function` | `"private"` | DB calls use the secret key |
-| Called by users AND by other services | `["user", "private"]` | Dual-auth — accepts either credential |
+| Scenario                                          | Allow                 | Why                                                   |
+| ------------------------------------------------- | --------------------- | ----------------------------------------------------- |
+| User clicks a button in the app                   | `"user"`              | Need user identity + RLS-scoped queries               |
+| External webhook (Stripe, GitHub)                 | `"public"`            | No Supabase JWT — validate webhook signature yourself |
+| Supabase Auth Hook                                | `"public"`            | Called by Supabase Auth, not a user session           |
+| Public API / health check                         | `"public"`            | Open access, no auth needed                           |
+| Cron job / scheduled function                     | `"private"`           | No user context — needs secret key validation         |
+| Called from DB via `_internal_call_edge_function` | `"private"`           | DB calls use the secret key                           |
+| Called by users AND by other services             | `["user", "private"]` | Dual-auth — accepts either credential                 |
 
 **When in doubt:** logged-in user → `"user"`. External service → `"public"`. Internal infrastructure → `"private"`.
 
