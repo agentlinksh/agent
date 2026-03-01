@@ -10,13 +10,17 @@ Agent Link is a Claude Code plugin with composable skills and an app development
 
 ## Install
 
-Agent Link is a [Claude Code plugin](https://docs.anthropic.com/en/docs/claude-code/plugins). Install it at project scope so every conversation in that project has access to the skills and agent.
+Agent Link is a [Claude Code plugin](https://docs.anthropic.com/en/docs/claude-code/plugins).
 
 ```bash
-# Project scope (recommended) — from the marketplace when published
-/install-plugin agentlink
+# New project (recommended)
+npx create-agentlink@latest
 
-# Local directory during development
+# From the marketplace
+/plugin marketplace add agentlinksh/agent
+/plugin install link@agentlink
+
+# Local directory (development)
 claude --plugin-dir ./path/to/agentlink
 ```
 
