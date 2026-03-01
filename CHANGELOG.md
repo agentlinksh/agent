@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.4.0] - 2026-02-28
+
+### Added
+
+- Schema-qualify rule — all SQL must use fully-qualified names (`public.charts`, not `charts`)
+- Database workflow rules in agent core — schema files as source of truth, first migration must create `api` schema, migration naming via `db diff`
+- Plan-first instruction — agent plans before building greenfield projects and major features
+- Marketplace manifest (`marketplace.json`)
+
+### Changed
+
+- Agent activates by default via `settings.json` — no need to `@mention` it
+- Granular Phase 0 prerequisite tracking — each item saved to memory individually (`cli_installed`, `stack_running`, `mcp_connected`, `setup_check`)
+- Grant `service_role` USAGE on `api` schema and set `db: { schema: "api" }` on all Supabase clients in `withSupabase.ts`
+- Standardize skill references to "Load the `X` skill for..." pattern
+
+### Removed
+
+- ENTITIES.md — entity registry file and all references (scaffold script, workflow examples)
+- Companion skills section from agent — was not picked up reliably, wasted context
+- `companions_offered` prerequisite step
+
 ## [0.3.0] - 2026-02-27
 
 ### Added
