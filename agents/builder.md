@@ -1,5 +1,5 @@
 ---
-name: app-developer
+name: builder
 description: App development agent. Plan, architect, and build web, mobile, and hybrid apps on a 100% Supabase architecture — RPC-first data access, schema isolation with RLS, edge functions for external integrations, and Postgres-native background jobs. Use for both planning and implementation.
 model: inherit
 memory: project
@@ -33,19 +33,22 @@ At the start of every conversation, read your memory for prerequisite status. On
 
 If `project_context` is not yet in memory, run `ls` in the project root and check:
 
-1. Does a `supabase/` directory exist? → **Path C**
-2. Does a `package.json` or equivalent manifest file exist (`Cargo.toml`, `go.mod`, `pyproject.toml`)? → **Path B**
-3. No manifest file? → **Path A** (greenfield project)
+1. Does a `supabase/` directory exist?
+   - Does `supabase/schemas/` contain `.sql` files? → **Path C** (active project)
+   - No schema files? → **Path B** (Supabase initialized, needs setup + planning)
+2. Does a `package.json` or equivalent manifest file exist (`Cargo.toml`, `go.mod`, `pyproject.toml`) but no `supabase/`? → **Path B**
+3. Nothing → **Path A** (greenfield project)
 
 **Do not inspect parent directories, sibling directories, or anything outside the project root.** Only `ls` the current working directory.
 
-**Path C — Existing Supabase project:** Continue to Step 2.
+**Path C — Active Supabase project:** Continue to Step 2.
 
-**Path B — Existing project, adding Supabase:**
+**Path B — Project needs setup:**
 
-1. Run `supabase init` → `supabase start`
+1. If `supabase/` doesn't exist: run `supabase init` → `supabase start`
 2. Follow the [Setup Guide](../skills/database/references/setup.md)
-3. Work within the existing project structure — do not reorganize existing directories
+3. **Plan before building** — ask about frontend, architecture, then plan the project (same as Path A steps 1–2)
+4. Work within the existing project structure — do not reorganize existing directories
 
 **Path A — New project:**
 

@@ -38,7 +38,7 @@ Review my schema and suggest improvements. Use agent link.
 Add a multi-tenant invitation flow to my app. Use agent link.
 ```
 
-The agent auto-triggers when you mention it in your prompt. You can also call it directly with `@agentlink:app-developer`.
+The agent auto-triggers when you mention it in your prompt. You can also call it directly with `@agentlink:builder`.
 
 ### Use skills directly
 
@@ -61,7 +61,7 @@ Skills use progressive disclosure to keep context lean:
 3. **References** — loaded on demand from SKILL.md for detailed patterns
 4. **Assets** — ready-to-copy SQL and TypeScript files dropped into projects
 
-The `@agentlink:app-developer` agent preloads all domain skills and enforces prerequisites and architecture before any work begins. Individual skills can also be used standalone — Claude loads multiple skills simultaneously when a task spans domains.
+The `@agentlink:builder` agent preloads all domain skills and enforces prerequisites and architecture before any work begins. Individual skills can also be used standalone — Claude loads multiple skills simultaneously when a task spans domains.
 
 ---
 
@@ -77,7 +77,7 @@ This means if you haven't configured the Supabase MCP server yet, the agent will
 
 ### Memory
 
-The agent has persistent memory scoped to your project (`.claude/agent-memory/app-developer/`). It builds knowledge across sessions — schema decisions, entity names, setup state, prerequisite status, patterns specific to your codebase. You can:
+The agent has persistent memory scoped to your project (`.claude/agent-memory/builder/`). It builds knowledge across sessions — schema decisions, entity names, setup state, prerequisite status, patterns specific to your codebase. You can:
 
 - **Read it** to see what the agent remembers about your project
 - **Edit it** to correct mistakes or add context the agent should know
