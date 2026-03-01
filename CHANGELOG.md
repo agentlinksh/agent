@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.0] - 2026-02-28
+
+### Changed
+
+- Update README Install section with real installation methods — CLI (`npx create-agentlink@latest`), marketplace, and local directory
+
 ## [0.4.1] - 2026-02-28
 
 ### Changed
