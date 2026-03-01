@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1] - 2026-02-28
+
+### Changed
+
+- Rename `app-developer` agent to `builder`
+- Refine Path C detection — bare `supabase init` (no schema files) now routes to Path B instead of skipping to Step 2
+- Path B expanded to cover both "existing project adding Supabase" and "Supabase initialized but bare" cases
+
 ## [0.4.0] - 2026-02-28
 
 ### Added
