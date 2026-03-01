@@ -25,7 +25,7 @@ These are your app development guidelines — not the project itself. The user's
 
 ## Phase 0: Prerequisites
 
-**Do not call `supabase:execute_sql` or any MCP tool until prerequisites pass.**
+**Do not run SQL or call any MCP tool until prerequisites pass.**
 
 At the start of every conversation, read your memory for prerequisite status. Only verify items not yet completed. When an item passes, save it to memory immediately. If an item fails, surface it to the user and resolve it before continuing.
 
@@ -41,14 +41,15 @@ If `project_context` is not yet in memory, run `ls` in the project root and chec
 
 **Do not inspect parent directories, sibling directories, or anything outside the project root.** Only `ls` the current working directory.
 
-**Path C — Active Supabase project:** Continue to Step 2.
+**Path C — Active Supabase project:** 
+
+1. Continue to Path A -> Step 2.
 
 **Path B — Project needs setup:**
 
 1. If `supabase/` doesn't exist: run `supabase init` → `supabase start`
-2. Follow the [Setup Guide](../skills/database/references/setup.md)
-3. **Plan before building** — ask about frontend, architecture, then plan the project (same as Path A steps 1–2)
-4. Work within the existing project structure — do not reorganize existing directories
+2. Work within the existing project structure — do not reorganize existing directories
+3. Continue to Path A -> Step 2.
 
 **Path A — New project:**
 
@@ -60,7 +61,7 @@ If `project_context` is not yet in memory, run `ls` in the project root and chec
    Don't assume or decide frontend/framework choices — if the request is vague ("build me a todo app"), ask.
 2. **Plan the full project** — Using the user's answers, decide the directory structure and how Supabase fits into it. Use the skills as guidelines for the database schema, API surface, and other components.
 3. **Scaffold the project** — Initialize the framework the user chose, create the directory structure, install dependencies. Skip if backend-only.
-4. **Then add Supabase** — Follow the [Setup Guide](../skills/database/references/setup.md).
+4. **Then setup Supabase** — Follow the [Setup Guide](../skills/database/references/setup.md).
 
 ### Step 2: Verify infrastructure
 
@@ -70,22 +71,28 @@ Check each item in order. Skip items already completed in memory. Stop at the fi
 |---|------|-------|------------|
 | 1 | `cli_installed` | `supabase --version` (bash) | Ask user to install Supabase CLI |
 | 2 | `stack_running` | `supabase status` (bash) | Run `supabase start` |
-| 3 | `mcp_connected` | `supabase:execute_sql` tool is available | Guide MCP setup (see below) |
-| 4 | `setup_check` | Run `check_setup.sql` via `supabase:execute_sql` → `"ready": true` | Follow [Setup Guide](../skills/database/references/setup.md) |
+| 3 | `mcp_connected` | `supabase:apply_migration` tool is available | Guide MCP setup (see below) |
+| 4 | `setup_check` | Run `check_setup.sql` via `psql` → `"ready": true` | Follow [Setup Guide](../skills/database/references/setup.md) |
 Save each item to memory as it passes. All items verified → proceed to development.
 
-**Re-verification:** If `supabase:execute_sql` fails during development, re-check `stack_running` and `mcp_connected` — the stack may have stopped between conversations.
+**Re-verification:** If `psql` or MCP tools fail during development, re-check `stack_running` and `mcp_connected` — the stack may have stopped between conversations.
 
-#### MCP setup guidance
+#### Tools reference
 
-If `supabase:execute_sql` is not available, guide the user through configuring it:
+| Tool | Via | When | Skill |
+|------|-----|------|-------|
+| `psql` | Bash — DB URL from `supabase status` | All SQL execution: schema changes, data fixes, setup checks | database |
+| `supabase:apply_migration` | MCP | Create migration files | database |
+| `supabase:get_advisors` | MCP | Security review after schema changes | database |
+| `supabase status` | Bash | Get DB URL, keys, verify stack is running | database, frontend |
+| `supabase db diff --use-pg-delta -f <name>` | Bash | Generate migration from live database | database |
+| `supabase gen types typescript --local` | Bash | Regenerate TypeScript types after schema changes | database, frontend |
+| `supabase functions serve` | Bash | Local edge function development | edge-functions |
+| `supabase secrets set` / `list` | Bash | Manage production edge function secrets | edge-functions |
 
-- Server name: `supabase`
-- Type: HTTP
-- URL: `http://localhost:54321/mcp` (native endpoint from `supabase start`)
-- Required tools: `supabase:execute_sql`, `supabase:apply_migration`
+#### MCP setup
 
-**Do not fall back to `psql`.** All SQL execution goes through `supabase:execute_sql`. If the user can't resolve MCP, then propose `psql` as a last resort.
+If `supabase:apply_migration` is not available, guide the user through configuring the MCP server: name `supabase`, type HTTP, URL `http://localhost:54321/mcp`.
 
 ---
 
@@ -137,7 +144,7 @@ Develop locally in your machine with the Supabase CLI.
 All database changes follow this loop. **Never skip steps or create migration files manually.**
 
 1. **Write SQL** to schema files in `supabase/schemas/` (not to migration files)
-2. **Apply live** — run the same SQL via `supabase:execute_sql`
+2. **Apply live** — run the same SQL via `psql`
 3. **Fix errors** with more SQL — never reset the database
 4. **Generate migration** — `supabase db diff --use-pg-delta -f descriptive_name`
 
