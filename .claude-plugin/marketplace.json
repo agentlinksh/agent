@@ -1,0 +1,13 @@
+{
+  "name": "agentlink",
+  "owner": {
+    "name": "Agent Link"
+  },
+  "plugins": [
+    {
+      "name": "link",
+      "source": "./",
+      "description": "Build apps with Supabase as the backend. Equips AI agents with schema-driven workflows, RPC-first data access, edge functions, auth, RLS, and multi-tenancy."
+    }
+  ]
+}
