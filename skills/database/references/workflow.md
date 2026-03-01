@@ -106,14 +106,7 @@ Run this after completing a set of related changes, not after every individual s
 
 Example: Adding a `readings` entity to a project that already has `charts`.
 
-**1. Register the entity** in `ENTITIES.md`:
-```markdown
-## Entities
-- chart
-- reading  ← new
-```
-
-**2. Create auth functions** — `supabase/schemas/public/_auth.sql`:
+**1. Create auth functions** — `supabase/schemas/public/_auth.sql`:
 ```sql
 CREATE OR REPLACE FUNCTION _auth_reading_can_read(p_reading_id uuid)
 RETURNS boolean
@@ -148,7 +141,7 @@ $$;
 
 Apply via `supabase:execute_sql`.
 
-**3. Create the entity file** — `supabase/schemas/public/readings.sql`:
+**2. Create the entity file** — `supabase/schemas/public/readings.sql`:
 ```sql
 -- Table
 CREATE TABLE IF NOT EXISTS public.readings (
@@ -188,7 +181,7 @@ USING (_auth_reading_is_owner(id));
 
 Apply via `supabase:execute_sql`.
 
-**4. Create API functions** — `supabase/schemas/api/reading.sql`:
+**3. Create API functions** — `supabase/schemas/api/reading.sql`:
 ```sql
 CREATE OR REPLACE FUNCTION api.reading_create(
   p_chart_id uuid,
@@ -239,12 +232,10 @@ $$;
 
 Apply via `supabase:execute_sql`.
 
-**5. Generate types:**
+**4. Generate types:**
 ```bash
 supabase gen types typescript --local > src/types/database.ts
 ```
-
-**6. Update entity registry** in `ENTITIES.md` with the complete mapping.
 
 ---
 

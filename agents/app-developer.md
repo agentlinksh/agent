@@ -69,8 +69,6 @@ Check each item in order. Skip items already completed in memory. Stop at the fi
 | 2 | `stack_running` | `supabase status` (bash) | Run `supabase start` |
 | 3 | `mcp_connected` | `supabase:execute_sql` tool is available | Guide MCP setup (see below) |
 | 4 | `setup_check` | Run `check_setup.sql` via `supabase:execute_sql` → `"ready": true` | Follow [Setup Guide](../skills/database/references/setup.md) |
-| 5 | `companions_offered` | N/A | Present companion skills (see [Companion Skills](#companion-skills)) |
-
 Save each item to memory as it passes. All items verified → proceed to development.
 
 **Re-verification:** If `supabase:execute_sql` fails during development, re-check `stack_running` and `mcp_connected` — the stack may have stopped between conversations.
@@ -85,15 +83,6 @@ If `supabase:execute_sql` is not available, guide the user through configuring i
 - Required tools: `supabase:execute_sql`, `supabase:apply_migration`
 
 **Do not fall back to `psql`.** All SQL execution goes through `supabase:execute_sql`. If the user can't resolve MCP, then propose `psql` as a last resort.
-
-#### Companion skills
-
-Present any missing companions and ask the user:
-- **All recommended** — install all missing companions
-- **Required only** — install only `supabase-postgres-best-practices`
-- **Skip** — continue without them
-
-After installing, tell the user: companion skills become available in the next conversation, not the current one. See the [Companion Skills](#companion-skills) section for the full catalog.
 
 ---
 
@@ -175,6 +164,24 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA api
 
 Load the `database` skill for the full workflow, schema file conventions, and worked examples.
 
+### Always schema-qualify
+
+Every table, function, and object reference in SQL must include its schema name. Never use unqualified names — even inside function bodies.
+
+```sql
+-- ❌ WRONG — unqualified
+SELECT * FROM charts WHERE user_id = auth.uid();
+INSERT INTO pings (monitor_id, is_up) VALUES (...);
+
+-- ✅ CORRECT — always schema-qualified
+SELECT * FROM public.charts WHERE user_id = auth.uid();
+INSERT INTO public.pings (monitor_id, is_up) VALUES (...);
+```
+
+This prevents `search_path` ambiguity and makes it explicit which schema owns each object.
+
+Load the `database` skill for the full workflow, schema file conventions, and worked examples.
+
 ### Schema usage
 
 Every schema has one job. Put things in the right place.
@@ -193,7 +200,7 @@ CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA pg_catalog;
 CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
 ```
 
-Use `database` skill.
+Load the `database` skill for schema file conventions, naming, and setup.
 
 ### Client-side: never direct table access
 
@@ -205,7 +212,7 @@ const { data } = await supabase.from("charts").select("*");
 const { data } = await supabase.rpc("chart_create", { p_name: "My Chart" });
 ```
 
-Use `frontend` skill.
+Load the `frontend` skill for client setup, RPC calls, and auth state.
 
 ### Security context: SECURITY INVOKER by default
 
@@ -218,12 +225,12 @@ BEGIN
 END; $$;
 ```
 
-Use `auth` skill.
-
 **SECURITY DEFINER only when required:**
 - `_auth_*` functions called by RLS policies (bypass RLS to query the table they protect)
 - `_internal_*` utility functions that need elevated access (vault secrets, auth.users)
 - Always document WHY: `-- SECURITY DEFINER: required because ...`
+
+Load the `auth` skill for RLS policies, RBAC, and multi-tenancy.
 
 ### Function prefixes
 
@@ -233,30 +240,5 @@ Use `auth` skill.
 | Auth (RLS) | `_auth_{entity}_{check}` | DEFINER |
 | Internal | `_internal_{name}` | DEFINER |
 
-Use `rpc` skill.
+Load the `rpc` skill for CRUD templates, pagination, and error handling.
 
----
-
-## Companion Skills
-
-Companion skills are community-maintained skills installed separately via `npx skills add`. They enhance Agent Link workflows but are not part of this plugin. When available, invoke them at the integration points described below.
-
-### Catalog
-
-| Skill | Install | Required | Used By | When |
-|-------|---------|----------|---------|------|
-| `supabase-postgres-best-practices` | `npx skills add supabase/agent-skills@supabase-postgres-best-practices` | Yes | `database` | Every schema change |
-| `frontend-design` | `npx skills add anthropics/skills@frontend-design` | No | `frontend` | Planning UI components/pages |
-| `vercel-react-best-practices` | `npx skills add vercel-labs/agent-skills@vercel-react-best-practices` | No | `frontend` | React projects |
-| `next-best-practices` | `npx skills add vercel-labs/next-skills --skill next-best-practices` | No | `frontend` | Next.js projects |
-| `resend-skills` | `npx skills add resend/resend-skills` | No | `auth` | Email integration |
-| `email-best-practices` | `npx skills add resend/email-best-practices` | No | `auth` | Email integration |
-| `react-email` | `npx skills add resend/react-email` | No | `auth` | Email templates |
-
-### Integration Rules
-
-- **`supabase-postgres-best-practices`** — After every schema change, before generating types. Invoke it to review SQL for performance and best practices.
-- **`frontend-design`** — During project planning when UI components or pages are being designed. Invoke it to guide component architecture and visual design.
-- **`vercel-react-best-practices`** — During React component work. Only invoke if the project uses React.
-- **`next-best-practices`** — During Next.js-specific work (routing, server components, data fetching). Only invoke if the project uses Next.js.
-- **Resend skills** (`resend-skills`, `email-best-practices`, `react-email`) — When setting up auth email hooks (Send Email hook). If available, defer email hook implementation and template setup to these skills.
