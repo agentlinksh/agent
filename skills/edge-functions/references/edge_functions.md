@@ -5,6 +5,7 @@ Project structure, shared utilities, and setup for Supabase Edge Functions.
 Every Edge Function uses the `withSupabase` wrapper. **See [withSupabase Reference](./with_supabase.md) for usage rules, role selection, client patterns, and examples.**
 
 ## Contents
+
 - Folder Structure (setting up shared utilities)
 - Required Secrets
 - Function Configuration (`config.toml`)
@@ -80,19 +81,19 @@ verify_jwt = false
 
 ## CORS
 
-CORS is handled as a separate utility in `supabase/functions/_shared/cors.ts`, following the [official Supabase pattern](https://supabase.com/docs/guides/functions/cors). Installed by CLI.
+For @supabase/supabase-js v2.95.0 and later: Import CORS headers directly from the SDK to ensure they stay synchronized with any new headers added to the client libraries. [Documentation](https://supabase.com/docs/guides/functions/cors)
 
 Always include `corsHeaders` in your responses:
 
 ```typescript
-import { corsHeaders } from "../_shared/cors.ts";
+import { corsHeaders } from "@supabase/supabase-js/cors";
 
 return Response.json(data, {
   headers: { ...corsHeaders, "Content-Type": "application/json" },
 });
 ```
 
-The `withSupabase` wrapper already handles `OPTIONS` preflight requests automatically.
+IMPORTANT: The `withSupabase` wrapper already handles `OPTIONS` preflight requests automatically.
 
 ---
 
@@ -142,11 +143,11 @@ Deno.serve(
 
     const { error: updateError } = await ctx.adminClient.rpc(
       "document_update_summary",
-      { p_document_id: document_id, p_summary: summary }
+      { p_document_id: document_id, p_summary: summary },
     );
 
     if (updateError) return errorResponse(updateError.message);
     return jsonResponse({ summary });
-  })
+  }),
 );
 ```

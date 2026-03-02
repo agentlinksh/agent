@@ -1,6 +1,6 @@
 ---
 name: edge-functions
-description: Supabase Edge Functions. Use when the task involves creating, modifying, or debugging edge functions, webhooks, external API integrations, service-to-service calls, or anything that runs in the Deno edge runtime. Also use for configuring edge function secrets, CORS, config.toml, or migrating from legacy Supabase API keys (anon/service_role to publishable/secret). Activate whenever the task touches supabase/functions/ or mentions edge functions.
+description: Supabase Edge Functions. Use when the task involves creating, modifying, or debugging edge functions, webhooks, external API integrations, service-to-service calls, or anything that runs in the Deno edge runtime. Also use for configuring edge function secrets, config.toml, or migrating from legacy Supabase API keys (anon/service_role to publishable/secret). Activate whenever the task touches supabase/functions/ or mentions edge functions.
 license: MIT
 compatibility: Requires Supabase CLI
 metadata:
@@ -28,7 +28,7 @@ This is required because the `withSupabase` wrapper handles auth itself. If `ver
 
 ### First edge function in a project?
 
-The `_shared/` utilities (`withSupabase.ts`, `cors.ts`, `responses.ts`, `types.ts`) should already exist in `supabase/functions/_shared/` — the CLI sets these up. If missing, run `npx create-agentlink@latest`.
+The `_shared/` utilities (`withSupabase.ts`, `responses.ts`, `types.ts`) should already exist in `supabase/functions/_shared/` — the CLI sets these up. If missing, run `npx create-agentlink@latest`.
 
 ### Creating a new function
 
@@ -96,7 +96,6 @@ supabase secrets set SB_SECRET_KEY=sb_secret_...
 supabase/functions/
 ├── _shared/                    # Shared utilities (NOT deployed)
 │   ├── withSupabase.ts         # Context wrapper
-│   ├── cors.ts                 # CORS headers
 │   ├── responses.ts            # Response helpers
 │   └── types.ts                # Shared types
 ├── _feature-name/              # Feature-specific shared modules (NOT deployed)
@@ -116,5 +115,5 @@ Folders prefixed with `_` are shared modules — they are not deployed as edge f
 Load these as needed:
 
 - **[🔧 withSupabase Wrapper](./references/with_supabase.md)** — Full wrapper API: allow types, dual-auth, clients, anti-patterns, context reference
-- **[📁 Edge Function Patterns](./references/edge_functions.md)** — Folder structure details, CORS, response helpers, feature-specific modules
+- **[📁 Edge Function Patterns](./references/edge_functions.md)** — Folder structure details, response helpers, feature-specific modules
 - **[🔑 API Key Migration](./references/api_key_migration.md)** — Migrate from legacy anon/service_role keys to new publishable/secret keys
