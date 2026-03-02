@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.6.0] - 2026-03-01
+
+The agent no longer sets up your project — the CLI does. This is a fundamental shift in how Agent Link works: infrastructure setup (`npx create-agentlink`) runs once in seconds, and the agent spends zero tokens verifying prerequisites, copying asset files, or scaffolding directories. Every token goes toward building your app.
+
+This aligns with the Agent Link philosophy: **tools for agents, not agents as tools.** The CLI is purpose-built tooling that gives the agent a ready environment. The agent is a builder that assumes a working environment and gets to work. Each does what it's best at.
+
+### Added
+
+- `npx create-agentlink check` — CLI validation command for setup issues (extensions, internal functions, vault secrets, api schema)
+- CORS headers now imported from `@supabase/supabase-js/cors` (SDK v2.95.0+) — no more local `cors.ts` file
+
+### Changed
+
+- **Agent no longer runs Phase 0 prerequisites** — CLI handles all project setup and validation. The agent builds, it does not scaffold.
+- Replace `execute_sql` MCP tool with `psql` across all skills — direct SQL execution via DB URL from `supabase status`
+- Tools reference table added to builder agent for quick lookup
+- Update `withSupabase` references to match latest implementation — trailing commas, `Record<string, unknown>` context types, client reuse pattern documented
+- Simplify README agent configuration section
+
+### Removed
+
+- **Database assets** — `setup.sql`, `check_setup.sql`, `seed.sql` (now CLI-owned)
+- **Edge function assets** — `withSupabase.ts`, `cors.ts`, `responses.ts`, `types.ts` (now CLI-owned)
+- **`cors.ts` as a shared utility** — replaced by SDK import `@supabase/supabase-js/cors`
+- Phase 0 prerequisite system from builder agent (setup.md, scaffold_schemas.sh, setup_vault_secrets.sh)
+- `auth.md` reference file (to be rewritten)
+- `frontend` skill from builder agent preloads
+- `docs/` directory (ABOUT.md, CATALOG.md)
+- Agent memory configuration (`memory: project`)
+- First migration rule (CLI creates api schema)
+
 ## [0.5.0] - 2026-02-28
 
 ### Changed
