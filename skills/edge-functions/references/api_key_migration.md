@@ -76,12 +76,7 @@ This is the largest part of the migration. Each step below must be completed.
 
 ### 1. Set up shared utilities
 
-Check if `supabase/functions/_shared/withSupabase.ts` exists. If not, copy the shared utilities from the skill's `assets/functions/` directory into the project's `supabase/functions/_shared/`:
-
-- `withSupabase.ts` — context wrapper
-- `cors.ts` — CORS headers
-- `responses.ts` — response helpers
-- `types.ts` — shared types
+Check if `supabase/functions/_shared/withSupabase.ts` exists. If not, tell the user to run `npx create-agentlink@latest` to install the shared utilities (`withSupabase.ts`, `cors.ts`, `responses.ts`, `types.ts`).
 
 ### 2. Set `verify_jwt = false` in `config.toml`
 
@@ -182,7 +177,7 @@ If old vault secrets exist with the legacy names, remove them:
 DELETE FROM vault.secrets WHERE name IN ('SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY');
 ```
 
-See [Setup Guide](./setup.md) steps 4-5 for the full walkthrough.
+Store vault secrets via `psql` using `vault.create_secret()`.
 
 ### Seed file
 
@@ -196,8 +191,6 @@ SELECT vault.create_secret('sb_secret_...', 'SB_SECRET_KEY');
 ```
 
 Replace placeholders with actual local keys from `supabase status`. If the seed file already has legacy vault secrets, replace them — don't duplicate.
-
-See [`assets/seed.sql`](../assets/seed.sql) for the full template.
 
 ---
 

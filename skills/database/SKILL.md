@@ -10,11 +10,7 @@ metadata:
 
 # Database
 
-Schema files, migrations, and project setup. Prerequisites and architecture are in the `agentlink` agent.
-
-## Setup Check
-
-Run [`assets/check_setup.sql`](./assets/check_setup.sql) via `psql`. If `"ready": true` → skip to the development loop. If anything is `false` → load [Setup Guide](./references/setup.md).
+Schema files, migrations, and type generation. Architecture and core rules are in the builder agent.
 
 ---
 
@@ -85,18 +81,22 @@ The database is **never** reset unless the user explicitly requests it.
 
 ---
 
+## Troubleshooting
+
+If something is missing or broken, the CLI can fix it:
+
+| Issue | Fix |
+|-------|-----|
+| Missing `_internal_*` functions | `npx create-agentlink check` — re-runs setup validation and fixes missing components |
+| Missing extensions (`pg_net`, `supabase_vault`) | `npx create-agentlink check` |
+| Missing vault secrets | `npx create-agentlink check` |
+| Missing `api` schema or grants | `npx create-agentlink check` |
+| Missing `supabase/schemas/` structure | `npx create-agentlink@latest` in project directory |
+
+---
+
 ## Reference Files
 
-- **[🛠️ Setup Guide](./references/setup.md)** — Phase 0 walkthrough: extensions, api schema, internal functions, vault secrets, seed file
 - **[📝 Development](./references/workflow.md)** — Development loop, migration workflow, worked examples
 - **[📋 Naming Conventions](./references/naming_conventions.md)** — Tables, columns, functions, schema files
 
-## Assets
-
-- **[🔍 Setup Check](./assets/check_setup.sql)** — Verify infrastructure is in place
-- **[⚙️ Internal Functions](./assets/setup.sql)** — `_internal_get_secret`, `_internal_call_edge_function`
-- **[🌱 Seed Template](./assets/seed.sql)** — Vault secrets for local dev
-## Scripts
-
-- **[scaffold_schemas.sh](./scripts/scaffold_schemas.sh)** — Bootstrap schema directory structure
-- **[setup_vault_secrets.sh](./scripts/setup_vault_secrets.sh)** — Store secrets in Vault

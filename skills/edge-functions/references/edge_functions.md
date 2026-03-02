@@ -36,21 +36,7 @@ Folders prefixed with `_` are shared modules and are NOT deployed as edge functi
 
 ### Setting Up Shared Utilities
 
-Ready-to-use shared utility files are provided as assets in this skill:
-
-```
-assets/functions/
-├── withSupabase.ts    # Context wrapper
-├── cors.ts            # CORS headers
-├── responses.ts       # Response helpers
-└── types.ts           # TypeScript types
-```
-
-**When creating the first edge function for a project**, check if `supabase/functions/_shared/withSupabase.ts` exists. If not:
-
-1. **Ask the user** if they'd like you to set up the shared edge function utilities
-2. If yes, copy the files from `assets/functions/` into the project's `supabase/functions/_shared/` directory
-3. Verify the required secrets (`SB_PUBLISHABLE_KEY`, `SB_SECRET_KEY`) are configured
+**When creating the first edge function for a project**, check if `supabase/functions/_shared/withSupabase.ts` exists. If not, tell the user to run `npx create-agentlink@latest` to set up the shared utilities.
 
 ---
 
@@ -94,7 +80,7 @@ verify_jwt = false
 
 ## CORS
 
-CORS is handled as a separate utility, following the [official Supabase pattern](https://supabase.com/docs/guides/functions/cors). See `assets/functions/cors.ts` — copy it to `supabase/functions/_shared/cors.ts` in the project.
+CORS is handled as a separate utility in `supabase/functions/_shared/cors.ts`, following the [official Supabase pattern](https://supabase.com/docs/guides/functions/cors). Installed by CLI.
 
 Always include `corsHeaders` in your responses:
 
@@ -112,7 +98,7 @@ The `withSupabase` wrapper already handles `OPTIONS` preflight requests automati
 
 ## Response Helpers
 
-See `assets/functions/responses.ts` — copy it to `supabase/functions/_shared/responses.ts` in the project. Utilities:
+`supabase/functions/_shared/responses.ts` provides response helpers. Installed by CLI. Utilities:
 
 ```typescript
 import { jsonResponse, errorResponse, notFound } from "../_shared/responses.ts";

@@ -278,7 +278,7 @@ interface SupabaseContext {
 
 ### Implementation
 
-The full implementation is provided as an asset file — see `assets/functions/withSupabase.ts`. Do not rewrite this from scratch; copy the asset file into the project's `supabase/functions/_shared/` directory.
+Do not rewrite this from scratch. The `_shared/` utilities are installed by the CLI. If missing, run `npx create-agentlink@latest`.
 
 The wrapper handles:
 - CORS preflight (`OPTIONS` requests) automatically
