@@ -54,7 +54,7 @@ $$;
 - **`api.` schema** — all client-facing functions live here
 - **`SECURITY INVOKER`** — RLS applies automatically, no manual `auth.uid()` filtering
 - **`SET search_path = ''`** — prevents search path injection
-- **Fully qualified names** — `public.charts`, `public._auth_*`, `public._internal_*` — never bare names
+- **Fully qualified names** — `public.charts`, `public._auth_*`, `public._internal_admin_*` — never bare names
 - **No per-function `GRANT EXECUTE`** — schema-level default privileges in `_schemas.sql` handle this automatically
 - **`p_` prefix** on parameters, `v_` prefix on local variables
 
@@ -64,7 +64,7 @@ $$;
 
 **Exception: SECURITY DEFINER** — only for:
 - `_auth_*` functions called by RLS policies (they need to query the table they protect)
-- `_internal_*` utilities needing elevated access (vault secrets, edge function calls)
+- `_internal_admin_*` utilities needing elevated access (vault secrets, edge function calls)
 - Always add: `-- SECURITY DEFINER: required because ...`
 
 ```sql
@@ -132,8 +132,8 @@ RETURN jsonb_build_object(
 ## Security Checklist
 
 - [ ] Function in `api` schema (not `public`)
-- [ ] `SECURITY INVOKER` (unless `_auth_*` or `_internal_*`)
+- [ ] `SECURITY INVOKER` (unless `_auth_*` or `_internal_admin_*`)
 - [ ] `SET search_path = ''`
-- [ ] Fully qualified names — tables (`public.tablename`) and function calls (`public._auth_*`, `public._internal_*`)
+- [ ] Fully qualified names — tables (`public.tablename`) and function calls (`public._auth_*`, `public._internal_admin_*`)
 - [ ] Don't manually filter by `auth.uid()` in INVOKER functions — RLS does this
 - [ ] Validate input parameters before use

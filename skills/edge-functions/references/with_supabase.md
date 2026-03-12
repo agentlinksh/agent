@@ -53,12 +53,17 @@ For functions called from the app by a logged-in user. The wrapper validates the
 ```typescript
 Deno.serve(
   withSupabase({ allow: "user" }, async (_req, ctx) => {
-    // ctx.user.id, ctx.user.email — user identity
-    // ctx.client — queries scoped to this user via RLS
-    const { data, error } = await ctx.client.rpc("profile_get_by_user");
+    try {
+      // ctx.user.id, ctx.user.email — user identity
+      // ctx.client — queries scoped to this user via RLS
+      const { data, error } = await ctx.client.rpc("profile_get_by_user");
 
-    if (error) return errorResponse(error.message);
-    return jsonResponse(data);
+      if (error) return errorResponse(error.message);
+      return jsonResponse(data);
+    } catch (err) {
+      console.error("Unhandled error:", err);
+      return errorResponse("Internal server error", 500);
+    }
   }),
 );
 ```
@@ -80,18 +85,23 @@ No auth enforcement — the request passes through to the handler.
 // Stripe webhook — validates its own signature, uses adminClient for DB writes
 Deno.serve(
   withSupabase({ allow: "public" }, async (req, ctx) => {
-    const signature = req.headers.get("stripe-signature");
-    if (!signature) return errorResponse("Missing signature", 401);
+    try {
+      const signature = req.headers.get("stripe-signature");
+      if (!signature) return errorResponse("Missing signature", 401);
 
-    const body = await req.json();
-    // Webhook-specific validation here...
+      const body = await req.json();
+      // Webhook-specific validation here...
 
-    const { error } = await ctx.adminClient.rpc("payment_process_webhook", {
-      p_event: body,
-    });
+      const { error } = await ctx.adminClient.rpc("payment_process_webhook", {
+        p_event: body,
+      });
 
-    if (error) return errorResponse(error.message);
-    return jsonResponse({ received: true });
+      if (error) return errorResponse(error.message);
+      return jsonResponse({ received: true });
+    } catch (err) {
+      console.error("Unhandled error:", err);
+      return errorResponse("Internal server error", 500);
+    }
   }),
 );
 ```
@@ -102,7 +112,7 @@ For functions called with the secret key. The wrapper validates that the `apikey
 
 Use this for:
 - Cron jobs / scheduled functions
-- Database-triggered calls via `_internal_call_edge_function`
+- Database-triggered calls via `_internal_admin_call_edge_function`
 - Internal service-to-service calls
 
 **Provides:** `ctx.client` (public), `ctx.adminClient`
@@ -111,12 +121,17 @@ Use this for:
 // Cron job — only callable with the secret key
 Deno.serve(
   withSupabase({ allow: "private" }, async (_req, ctx) => {
-    const { data, error } = await ctx.adminClient.rpc(
-      "cleanup_expired_sessions",
-    );
+    try {
+      const { data, error } = await ctx.adminClient.rpc(
+        "cleanup_expired_sessions",
+      );
 
-    if (error) return errorResponse(error.message);
-    return jsonResponse({ deleted: data });
+      if (error) return errorResponse(error.message);
+      return jsonResponse({ deleted: data });
+    } catch (err) {
+      console.error("Unhandled error:", err);
+      return errorResponse("Internal server error", 500);
+    }
   }),
 );
 ```
@@ -129,16 +144,21 @@ Some functions are called from multiple contexts — e.g., by a logged-in user f
 // Called by users (JWT) and by admin-regenerate (secret key)
 Deno.serve(
   withSupabase({ allow: ["user", "private"] }, async (req, ctx) => {
-    // ctx.user exists → called by a logged-in user (JWT auth succeeded)
-    // ctx.user is undefined → called with secret key (internal/service)
-    const userId = ctx.user?.id ?? (await req.json()).user_id;
+    try {
+      // ctx.user exists → called by a logged-in user (JWT auth succeeded)
+      // ctx.user is undefined → called with secret key (internal/service)
+      const userId = ctx.user?.id ?? (await req.json()).user_id;
 
-    const { data, error } = await ctx.adminClient.rpc("birth_chart_generate", {
-      p_user_id: userId,
-    });
+      const { data, error } = await ctx.adminClient.rpc("birth_chart_generate", {
+        p_user_id: userId,
+      });
 
-    if (error) return errorResponse(error.message);
-    return jsonResponse(data);
+      if (error) return errorResponse(error.message);
+      return jsonResponse(data);
+    } catch (err) {
+      console.error("Unhandled error:", err);
+      return errorResponse("Internal server error", 500);
+    }
   }),
 );
 ```
@@ -164,7 +184,7 @@ Deno.serve(
 | Public API / health check | `public` | Open access, no auth needed |
 | Cron job / scheduled function | `private` | No user context; needs secret key validation |
 | Called from another edge function | `private` | Internal service-to-service; uses secret key |
-| Called from DB via `_internal_call_edge_function` | `private` | DB calls with secret key |
+| Called from DB via `_internal_admin_call_edge_function` | `private` | DB calls with secret key |
 | Called by users AND by other edge functions | `["user", "private"]` | Dual-auth — accepts either credential |
 
 **When in doubt:** if there's a logged-in user, use `user`. If it's an external service, use `public`. If it's internal infrastructure, use `private`. If it's called from multiple contexts, use an array.

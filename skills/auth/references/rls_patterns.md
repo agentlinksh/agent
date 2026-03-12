@@ -363,7 +363,7 @@ BEGIN
   RETURNING * INTO v_invitation;
 
   -- Send invitation email via edge function
-  PERFORM public._internal_call_edge_function(
+  PERFORM public._internal_admin_call_edge_function(
     'send-invitation',
     jsonb_build_object(
       'email', p_email,
@@ -437,7 +437,7 @@ WITH CHECK (user_id = auth.uid());
 
 ### Service-role bypass
 
-Service role bypasses RLS by default — no special policy needed. This is used by `_internal_*` functions and edge functions with `ctx.adminClient`.
+Service role bypasses RLS by default — no special policy needed. This is used by `_internal_admin_*` functions and edge functions with `ctx.adminClient`.
 
 If you need a function to explicitly act as service role, use `SECURITY DEFINER` and document why.
 

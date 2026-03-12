@@ -29,7 +29,8 @@ Consistent naming across all database objects.
 |------|---------|---------|
 | Business logic | `api.{entity}_{action}` | `api.chart_create`, `api.chart_get_by_id`, `api.reading_archive` |
 | Auth (RLS) | `public._auth_{entity}_{check}` | `public._auth_chart_can_read`, `public._auth_reading_is_owner` |
-| Internal utils | `public._internal_{name}` | `public._internal_get_secret`, `public._internal_call_edge_function` |
+| Internal admin | `public._internal_admin_{name}` | `public._internal_admin_get_secret`, `public._internal_admin_call_edge_function` |
+| Auth hooks | `public._hook_{hook_name}` | `public._hook_before_user_created` |
 
 ### Function Actions (Common Verbs)
 
@@ -59,7 +60,8 @@ Consistent naming across all database objects.
 |--------|-----------|----------|
 | `public/` | `{entity_plural}.sql` | `charts.sql` — table + indexes + triggers + policies |
 | `public/` | `_auth.sql` | Shared `_auth_*` helper functions |
-| `public/` | `_internal.sql` | Shared `_internal_*` utility functions |
+| `public/` | `_internal_admin.sql` | Shared `_internal_admin_*` utility functions |
+| `public/` | `_hook_{hook_name}.sql` | Supabase auth hook PG functions |
 | `api/` | `{entity_singular}.sql` | `chart.sql` — `api.*` functions + grants |
 | (root) | `_schemas.sql` | `CREATE SCHEMA api;` + role grants |
 

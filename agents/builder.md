@@ -3,6 +3,7 @@ name: builder
 description: App development agent. Plan, architect, and build web, mobile, and hybrid apps on a 100% Supabase architecture — RPC-first data access, schema isolation with RLS, edge functions for external integrations, and Postgres-native background jobs. Use for both planning and implementation.
 model: inherit
 skills:
+  - cli
   - database
   - rpc
   - auth
@@ -68,7 +69,7 @@ SQL files in `supabase/schemas/` contain `-- @agentlink <name>` annotations mark
 
 If the issue persists after updating, **create a project-scoped override:**
 
-- Write the corrected function to the appropriate schema file in `supabase/schemas/` (e.g., `public/_internal.sql`)
+- Write the corrected function to the appropriate schema file in `supabase/schemas/` (e.g., `public/_internal_admin.sql`)
 - Remove the `-- @agentlink` annotation block from your version — this makes it project-owned so `--force-update` won't overwrite it
 - Apply via `psql` and generate a migration
 - Let the user know you've created a project-specific override and why, so they're aware it diverges from the managed version
@@ -108,7 +109,7 @@ api schema (exposed to Data API)
 public schema (NOT exposed — invisible to REST API)
 ├── Tables — charts, readings, profiles, ...
 ├── _auth_* functions — RLS policy helpers
-└── _internal_* functions — vault, edge function calls
+└── _internal_admin_* functions — vault, edge function calls
 ```
 
 `supabase.from('charts').select()` literally doesn't work — the table isn't exposed. All data access goes through `supabase.rpc()`.
@@ -170,7 +171,7 @@ Every schema has one job. Put things in the right place.
 | Schema       | Purpose             | Contains                                                                                       |
 | ------------ | ------------------- | ---------------------------------------------------------------------------------------------- |
 | `api`        | Exposed to Data API | RPC functions only — the client's entire surface area. Use `rpc` skill.                        |
-| `public`     | NOT exposed         | Tables, RLS policies, `_auth_*` and `_internal_*` functions. Use `database` and `auth` skills. |
+| `public`     | NOT exposed         | Tables, RLS policies, `_auth_*` and `_internal_admin_*` functions. Use `database` and `auth` skills. |
 | `extensions` | Postgres extensions | All extensions (`pg_cron`, `pgmq`, `pgcrypto`, etc.). Always `WITH SCHEMA extensions`.         |
 
 ```sql
@@ -209,17 +210,19 @@ END; $$;
 **SECURITY DEFINER only when required:**
 
 - `_auth_*` functions called by RLS policies (bypass RLS to query the table they protect)
-- `_internal_*` utility functions that need elevated access (vault secrets, auth.users)
+- `_internal_admin_*` utility functions that need elevated access (vault secrets, auth.users)
 - Always document WHY: `-- SECURITY DEFINER: required because ...`
 
 Load the `auth` skill for RLS policies, RBAC, and multi-tenancy.
 
 ### Function prefixes
 
-| Type        | Pattern                  | Security |
-| ----------- | ------------------------ | -------- |
-| Client RPCs | `api.{entity}_{action}`  | INVOKER  |
-| Auth (RLS)  | `public._auth_{entity}_{check}` | DEFINER  |
-| Internal    | `public._internal_{name}`       | DEFINER  |
+| Type           | Pattern                          | Security |
+| -------------- | -------------------------------- | -------- |
+| Client RPCs    | `api.{entity}_{action}`          | INVOKER  |
+| Admin RPCs     | `api._admin_{name}`              | DEFINER  |
+| Auth (RLS)     | `public._auth_{entity}_{check}`  | DEFINER  |
+| Internal admin | `public._internal_admin_{name}`  | DEFINER  |
+| Auth hooks     | `public._hook_{hook_name}`       | DEFINER  |
 
 Load the `rpc` skill for CRUD templates, pagination, and error handling.

@@ -23,7 +23,7 @@ supabase/schemas/
 │   ├── charts.sql            # table + indexes + triggers + policies (all in one)
 │   ├── tenants.sql
 │   ├── _auth.sql             # Shared _auth_* helper functions
-│   └── _internal.sql         # Shared _internal_* utility functions
+│   └── _internal_admin.sql    # Shared _internal_admin_* utility functions
 └── api/
     ├── chart.sql             # api.chart_* functions + grants
     ├── tenant.sql
@@ -35,12 +35,12 @@ Files are grouped by Postgres schema (`public/`, `api/`) with entity-centric fil
 **Conventions:**
 - `public/` files = **plural** (match table names): `charts.sql`
 - `api/` files = **singular** (match entity): `chart.sql`
-- `_` prefix = shared/infrastructure: `_auth.sql`, `_internal.sql`, `_schemas.sql`
+- `_` prefix = shared/infrastructure: `_auth.sql`, `_internal_admin.sql`, `_schemas.sql`
 - Entity files in `public/` contain everything for that entity: table, indexes, triggers, policies
 
 **Which schema for what:**
 - `api.*` — Client-facing RPCs (the only things exposed via the Data API)
-- `public.*` — Tables, `_auth_*` functions, `_internal_*` functions, triggers
+- `public.*` — Tables, `_auth_*` functions, `_internal_admin_*` functions, triggers
 - `extensions.*` — All Postgres extensions. Always `CREATE EXTENSION ... WITH SCHEMA extensions`
 - Never create tables in `api` — it contains functions only
 
@@ -71,8 +71,10 @@ The database is **never** reset unless the user explicitly requests it.
 | Tables | plural, snake_case | `public.charts`, `public.user_profiles` |
 | Columns | singular, snake_case | `user_id`, `created_at` |
 | Client RPCs | `api.{entity}_{action}` | `api.chart_create`, `api.chart_get_by_id` |
+| Admin RPCs | `api._admin_{name}` | `api._admin_enqueue_task`, `api._admin_queue_read` |
 | Auth functions | `public._auth_{entity}_{check}` | `public._auth_chart_can_read` |
-| Internal functions | `public._internal_{name}` | `public._internal_get_secret` |
+| Internal admin | `public._internal_admin_{name}` | `public._internal_admin_get_secret` |
+| Auth hooks | `public._hook_{hook_name}` | `public._hook_before_user_created` |
 | Indexes | `idx_{table}_{columns}` | `idx_charts_user_id` |
 | Policies | descriptive English | `"Users can read own charts"` |
 | Triggers | `trg_{table}_{event}` | `trg_charts_updated_at` |
@@ -97,16 +99,16 @@ CREATE OR REPLACE FUNCTION _auth_chart_can_read(p_chart_id uuid) ...
 CREATE OR REPLACE FUNCTION public._auth_chart_can_read(p_chart_id uuid) ...
 
 -- ❌ NOT THIS — bare function call
-PERFORM _internal_call_edge_function('queue-worker');
+PERFORM _internal_admin_call_edge_function('queue-worker');
 
 -- ✅ THIS
-PERFORM public._internal_call_edge_function('queue-worker');
+PERFORM public._internal_admin_call_edge_function('queue-worker');
 
 -- ❌ NOT THIS — bare GRANT/REVOKE
-GRANT EXECUTE ON FUNCTION _internal_get_secret(text) TO service_role;
+GRANT EXECUTE ON FUNCTION _internal_admin_get_secret(text) TO service_role;
 
 -- ✅ THIS
-GRANT EXECUTE ON FUNCTION public._internal_get_secret(text) TO service_role;
+GRANT EXECUTE ON FUNCTION public._internal_admin_get_secret(text) TO service_role;
 ```
 
 ---
@@ -121,7 +123,7 @@ If something is missing or broken, use `check` to diagnose and `--force-update` 
 
 | Issue | Diagnose with `check` | Fix |
 |-------|----------------------|-----|
-| Missing `_internal_*` functions | `database.functions: false` | `npx create-agentlink --force-update` |
+| Missing `_internal_admin_*` functions | `database.functions: false` | `npx create-agentlink --force-update` |
 | Missing extensions (`pg_net`, `supabase_vault`) | `database.extensions: false` | `npx create-agentlink --force-update` |
 | Missing vault secrets | `database.secrets: false` | `npx create-agentlink --force-update` |
 | Missing `api` schema or grants | `database.api_schema: false` | `npx create-agentlink --force-update` |

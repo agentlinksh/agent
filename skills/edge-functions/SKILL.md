@@ -42,10 +42,15 @@ import { jsonResponse, errorResponse } from "../_shared/responses.ts";
 
 Deno.serve(
   withSupabase({ allow: "user" }, async (_req, ctx) => {
-    const { data, error } = await ctx.client.rpc("my_rpc_function");
+    try {
+      const { data, error } = await ctx.client.rpc("my_rpc_function");
 
-    if (error) return errorResponse(error.message);
-    return jsonResponse(data);
+      if (error) return errorResponse(error.message);
+      return jsonResponse(data);
+    } catch (err) {
+      console.error("Unhandled error:", err);
+      return errorResponse("Internal server error", 500);
+    }
   }),
 );
 ```
@@ -63,7 +68,7 @@ Deno.serve(
 | Supabase Auth Hook                                | `"public"`            | Called by Supabase Auth, not a user session           |
 | Public API / health check                         | `"public"`            | Open access, no auth needed                           |
 | Cron job / scheduled function                     | `"private"`           | No user context — needs secret key validation         |
-| Called from DB via `_internal_call_edge_function` | `"private"`           | DB calls use the secret key                           |
+| Called from DB via `_internal_admin_call_edge_function` | `"private"`           | DB calls use the secret key                           |
 | Called by users AND by other services             | `["user", "private"]` | Dual-auth — accepts either credential                 |
 
 **When in doubt:** logged-in user → `"user"`. External service → `"public"`. Internal infrastructure → `"private"`.

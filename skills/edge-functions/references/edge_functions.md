@@ -10,6 +10,7 @@ Every Edge Function uses the `withSupabase` wrapper. **See [withSupabase Referen
 - Required Secrets
 - Function Configuration (`config.toml`)
 - CORS
+- Error Handling (server-side + client-side)
 - Response Helpers
 - Feature-Specific Shared Modules
 
@@ -96,6 +97,71 @@ IMPORTANT: The `withSupabase` wrapper already handles `OPTIONS` preflight reques
 
 ---
 
+## Error Handling
+
+### Server-Side
+
+Always wrap handler logic in a try-catch. Without it, thrown exceptions (e.g., from `req.json()`, external API calls) crash the function with a raw 500 and no structured response.
+
+```typescript
+Deno.serve(
+  withSupabase({ allow: "user" }, async (req, ctx) => {
+    try {
+      const body = await req.json();
+      const { data, error } = await ctx.client.rpc("some_function", body);
+
+      if (error) return errorResponse(error.message, 400);
+      return jsonResponse(data);
+    } catch (err) {
+      console.error("Unhandled error:", err);
+      return errorResponse("Internal server error", 500);
+    }
+  }),
+);
+```
+
+- Use the right HTTP status code: `400` for bad input, `401` for unauthorized, `404` for not found, `500` for unexpected errors
+- Always `console.error` before returning — errors appear in the Supabase Dashboard Logs tab
+- Never leak internal details (stack traces, SQL errors) to the client in production
+
+### Client-Side (invoking from the frontend)
+
+When calling edge functions from the client via `supabase.functions.invoke()`, handle the three error types:
+
+```typescript
+import {
+  FunctionsHttpError,
+  FunctionsRelayError,
+  FunctionsFetchError,
+} from "@supabase/supabase-js";
+
+const { data, error } = await supabase.functions.invoke("my-function", {
+  body: { id: "123" },
+});
+
+if (error) {
+  if (error instanceof FunctionsHttpError) {
+    // Function returned an error response (4xx/5xx)
+    const errorData = await error.context.json();
+    console.error("Function error:", errorData);
+  } else if (error instanceof FunctionsRelayError) {
+    // Network issue between client and Supabase
+    console.error("Relay error:", error.message);
+  } else if (error instanceof FunctionsFetchError) {
+    // Function unreachable (wrong name, not deployed, etc.)
+    console.error("Fetch error:", error.message);
+  }
+}
+```
+
+| Error type | Meaning | Common causes |
+|---|---|---|
+| `FunctionsHttpError` | Function ran but returned an error status | Bad input, auth failure, handler returned `errorResponse()` |
+| `FunctionsRelayError` | Request didn't reach the function | Network issues, Supabase infrastructure problems |
+| `FunctionsFetchError` | Function couldn't be found | Wrong function name, function not deployed |
+
+---
+
 ## Response Helpers
 
 `supabase/functions/_shared/responses.ts` provides response helpers. Installed by CLI. Utilities:
@@ -130,23 +196,28 @@ import { callOpenAI } from "../_ai/openai.ts";
 
 Deno.serve(
   withSupabase({ allow: "user" }, async (req, ctx) => {
-    const { document_id } = await req.json();
+    try {
+      const { document_id } = await req.json();
 
-    const { data: doc, error } = await ctx.client.rpc("document_get_by_id", {
-      p_document_id: document_id,
-    });
+      const { data: doc, error } = await ctx.client.rpc("document_get_by_id", {
+        p_document_id: document_id,
+      });
 
-    if (error) return errorResponse(error.message);
+      if (error) return errorResponse(error.message);
 
-    const summary = await callOpenAI(buildPrompt("summarize", doc.content));
+      const summary = await callOpenAI(buildPrompt("summarize", doc.content));
 
-    const { error: updateError } = await ctx.adminClient.rpc(
-      "document_update_summary",
-      { p_document_id: document_id, p_summary: summary },
-    );
+      const { error: updateError } = await ctx.adminClient.rpc(
+        "document_update_summary",
+        { p_document_id: document_id, p_summary: summary },
+      );
 
-    if (updateError) return errorResponse(updateError.message);
-    return jsonResponse({ summary });
+      if (updateError) return errorResponse(updateError.message);
+      return jsonResponse({ summary });
+    } catch (err) {
+      console.error("Unhandled error:", err);
+      return errorResponse("Internal server error", 500);
+    }
   }),
 );
 ```

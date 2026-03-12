@@ -54,9 +54,9 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ```
 
 ```sql
--- Trigger function: supabase/schemas/public/_internal.sql
+-- Trigger function: supabase/schemas/public/_internal_admin.sql
 -- Trigger: supabase/schemas/public/profiles.sql
-CREATE OR REPLACE FUNCTION public._internal_handle_new_user()
+CREATE OR REPLACE FUNCTION public._internal_admin_handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER  -- required: reads from auth.users which RLS can't access
@@ -76,7 +76,7 @@ $$;
 CREATE TRIGGER trg_auth_users_new_user
   AFTER INSERT ON auth.users
   FOR EACH ROW
-  EXECUTE FUNCTION public._internal_handle_new_user();
+  EXECUTE FUNCTION public._internal_admin_handle_new_user();
 ```
 
 ### Profile RPCs

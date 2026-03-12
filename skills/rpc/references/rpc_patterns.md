@@ -469,7 +469,7 @@ BEGIN
   RETURNING id INTO v_invoice_id;
 
   -- 4. Trigger async side effects
-  PERFORM public._internal_call_edge_function(
+  PERFORM public._internal_admin_call_edge_function(
     'notify-order-closed',
     jsonb_build_object('order_id', p_order_id, 'invoice_id', v_invoice_id)
   );
@@ -549,4 +549,4 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA api
 
 Every function created in the `api` schema is automatically callable by both `anon` and `authenticated` roles. No per-function `GRANT EXECUTE` is needed.
 
-`_auth_*` and `_internal_*` functions in `public` do **not** get grants — they're called internally by RLS policies and other functions, not by clients.
+`_auth_*` and `_internal_admin_*` functions in `public` do **not** get grants — they're called internally by RLS policies and other functions, not by clients.

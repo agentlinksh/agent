@@ -298,9 +298,9 @@ supabase gen types typescript --local > src/types/database.ts
 
 Example: Auto-update `updated_at` on row changes.
 
-**1. Create trigger function** (once per project) — `supabase/schemas/public/_internal.sql`. Apply via `psql`:
+**1. Create trigger function** (once per project) — `supabase/schemas/public/_internal_admin.sql`. Apply via `psql`:
 ```sql
-CREATE OR REPLACE FUNCTION public._internal_set_updated_at()
+CREATE OR REPLACE FUNCTION public._internal_admin_set_updated_at()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -319,5 +319,5 @@ DROP TRIGGER IF EXISTS trg_readings_updated_at ON public.readings;
 CREATE TRIGGER trg_readings_updated_at
   BEFORE UPDATE ON public.readings
   FOR EACH ROW
-  EXECUTE FUNCTION public._internal_set_updated_at();
+  EXECUTE FUNCTION public._internal_admin_set_updated_at();
 ```

@@ -163,7 +163,7 @@ Grep for imports of these files and update them to use `withSupabase` and the re
 
 ### Vault secrets
 
-The `_internal_call_edge_function` database function relies on vault secrets to call edge functions. Store the new keys in Vault:
+The `_internal_admin_call_edge_function` database function relies on vault secrets to call edge functions. Store the new keys in Vault:
 
 ```sql
 SELECT vault.create_secret('http://127.0.0.1:54321', 'SUPABASE_URL');
