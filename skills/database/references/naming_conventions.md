@@ -59,7 +59,8 @@ Consistent naming across all database objects.
 | Folder | File Name | Contains |
 |--------|-----------|----------|
 | `public/` | `{entity_plural}.sql` | `charts.sql` — table + indexes + triggers + policies |
-| `public/` | `_auth.sql` | Shared `_auth_*` helper functions |
+| `public/` | `_auth_{entity}.sql` | `_auth_tenant.sql` — `_auth_*` helper functions for an entity |
+| `public/` | `{related_entities}.sql` | `multitenancy.sql` — multiple related tables with FK dependencies |
 | `public/` | `_internal_admin.sql` | Shared `_internal_admin_*` utility functions |
 | `public/` | `_hook_{hook_name}.sql` | Supabase auth hook PG functions |
 | `api/` | `{entity_singular}.sql` | `chart.sql` — `api.*` functions + grants |

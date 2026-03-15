@@ -15,10 +15,14 @@ The daily development loop. How agents build features, apply changes, and produc
 
 The agent applies every change in two places simultaneously:
 
-1. **The live local database** — via `psql`, so changes take effect immediately
+1. **The live database** (local or cloud) — via `psql`, so changes take effect immediately
 2. **The schema files** — in `supabase/schemas/`, so the source of truth stays in sync
 
 Schema files are the canonical representation of your database. The live database is the working copy. Both must always reflect the same state.
+
+> **Cloud mode:** Use the remote `psql` connection string from `CLAUDE.md` instead of the local DB URL from `supabase status`.
+
+Schema files are clean declarations — no `DROP` statements. Use `CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE FUNCTION`, `CREATE INDEX IF NOT EXISTS`, plain `CREATE POLICY`, plain `CREATE TRIGGER`. DROPs belong in migrations only.
 
 **The database is never reset unless the user explicitly requests it.**
 
@@ -32,6 +36,8 @@ When building a feature, the agent:
 
 1. Writes the SQL in the appropriate schema file (see [naming conventions](./naming_conventions.md))
 2. Immediately applies the same SQL via `psql` — every file write must be followed by an apply
+   - **Local:** DB URL from `supabase status`
+   - **Cloud:** remote connection string from `CLAUDE.md`
 3. If something breaks, fixes it with more SQL — never resets
 4. Continues building until the feature is complete
 
@@ -69,10 +75,15 @@ No migrations are created. The agent works directly against the live database wh
 Generate a single migration capturing all un-migrated changes:
 
 ```bash
+# Local
 supabase db diff --use-pg-delta -f descriptive_migration_name
+
+# Cloud — diff against the linked remote project, then push
+supabase db diff --use-pg-delta -f descriptive_migration_name --linked
+supabase db push
 ```
 
-This compares the live local database against the migrations folder and outputs everything that's different as one migration file. The `--use-pg-delta` flag automatically resolves statement ordering (tables before indexes, functions before triggers, etc.).
+This compares the live database against the migrations folder and outputs everything that's different as one migration file. The `--use-pg-delta` flag automatically resolves statement ordering (tables before indexes, functions before triggers, etc.).
 
 ### Review
 
@@ -93,7 +104,11 @@ Check the generated file in `supabase/migrations/`:
 After any schema change, regenerate the TypeScript types:
 
 ```bash
+# Local
 supabase gen types typescript --local > src/types/database.ts
+
+# Cloud (project ref from agentlink.json or CLAUDE.md)
+supabase gen types typescript --project-id <ref> > src/types/database.ts
 ```
 
 Run this after completing a set of related changes, not after every individual statement.
@@ -106,7 +121,7 @@ Run this after completing a set of related changes, not after every individual s
 
 Example: Adding a `readings` entity to a project that already has `charts`.
 
-**1. Create auth functions** — `supabase/schemas/public/_auth.sql`:
+**1. Create auth functions** — `supabase/schemas/public/_auth_reading.sql`:
 ```sql
 CREATE OR REPLACE FUNCTION public._auth_reading_can_read(p_reading_id uuid)
 RETURNS boolean
@@ -298,26 +313,12 @@ supabase gen types typescript --local > src/types/database.ts
 
 Example: Auto-update `updated_at` on row changes.
 
-**1. Create trigger function** (once per project) — `supabase/schemas/public/_internal_admin.sql`. Apply via `psql`:
-```sql
-CREATE OR REPLACE FUNCTION public._internal_admin_set_updated_at()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY INVOKER
-SET search_path = ''
-AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$;
-```
+The trigger function `public.set_updated_at()` is scaffolded by the CLI in `supabase/schemas/public/_internal_admin.sql` — the agent doesn't need to create it.
 
-**2. Create trigger** — `supabase/schemas/public/readings.sql`. Apply via `psql`:
+**1. Create trigger** — `supabase/schemas/public/readings.sql`. Apply via `psql`:
 ```sql
-DROP TRIGGER IF EXISTS trg_readings_updated_at ON public.readings;
 CREATE TRIGGER trg_readings_updated_at
   BEFORE UPDATE ON public.readings
   FOR EACH ROW
-  EXECUTE FUNCTION public._internal_admin_set_updated_at();
+  EXECUTE FUNCTION public.set_updated_at();
 ```

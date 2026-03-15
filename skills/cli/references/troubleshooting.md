@@ -40,6 +40,7 @@ ls supabase/migrations/ | sort
 mv supabase/migrations/20240101120000_foo.sql supabase/migrations/20240101120001_foo.sql
 # Repair if needed
 supabase migration repair 20240101120001 --status applied --local
+# Cloud: use --linked instead of --local
 ```
 
 ---
@@ -73,6 +74,7 @@ If ordering is wrong, rename files to fix timestamps and repair:
 ```bash
 supabase migration repair <old_version> --status reverted --local
 supabase migration repair <new_version> --status applied --local
+# Cloud: use --linked instead of --local
 ```
 
 ---
@@ -109,13 +111,17 @@ EOF
 
 # Mark as applied (if the SQL was already run on the local DB)
 supabase migration repair ${TIMESTAMP} --status applied --local
+# Cloud: use --linked instead of --local
 ```
 
 ### Apply SQL directly via psql
 
 ```bash
-# Get the DB URL
+# Local — get the DB URL from supabase status
 DB_URL=$(supabase status -o json | jq -r '.DB_URL // .db_url')
+
+# Cloud — use the remote connection string from CLAUDE.md
+# DB_URL="postgresql://postgres:$SUPABASE_DB_PASSWORD@db.<ref>.supabase.co:5432/postgres"
 
 # Run inline SQL
 psql "$DB_URL" -c "ALTER TABLE public.charts ADD COLUMN description text;"
@@ -134,6 +140,7 @@ supabase migration repair <version> --status reverted --local
 # Re-apply by running the SQL via psql
 psql "$DB_URL" -f supabase/migrations/<version>_name.sql
 supabase migration repair <version> --status applied --local
+# Cloud: use --linked instead of --local
 ```
 
 ### Remove a migration

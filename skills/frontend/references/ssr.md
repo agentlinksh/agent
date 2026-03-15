@@ -1,5 +1,7 @@
 # SSR Patterns
 
+> These patterns apply to projects created with `--nextjs`. For the default Vite SPA scaffold, see the main frontend skill.
+
 Server-side rendering with `@supabase/ssr` — cookie-based auth for Next.js and SvelteKit.
 
 ## Contents

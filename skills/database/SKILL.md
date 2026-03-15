@@ -2,7 +2,7 @@
 name: database
 description: Schema files, migrations, and type generation for Supabase Postgres. Use when the task involves creating or modifying tables, columns, indexes, triggers, RLS policies, or database functions. Activate whenever the task touches supabase/schemas/, supabase/migrations/, or involves structural database changes.
 license: MIT
-compatibility: Requires Supabase CLI, psql, and Supabase MCP server
+compatibility: Requires Supabase CLI and psql. MCP server available in local mode only.
 metadata:
   author: agentlink
   version: "0.1"
@@ -20,14 +20,16 @@ Schema files, migrations, and type generation. Architecture and core rules are i
 supabase/schemas/
 ├── _schemas.sql              # CREATE SCHEMA api; + role grants
 ├── public/
-│   ├── charts.sql            # table + indexes + triggers + policies (all in one)
-│   ├── tenants.sql
-│   ├── _auth.sql             # Shared _auth_* helper functions
+│   ├── profiles.sql           # table + indexes + triggers + policies
+│   ├── multitenancy.sql       # tenants + memberships + invitations (FK order)
+│   ├── charts.sql             # custom entity table (example)
+│   ├── _auth_tenant.sql       # Scaffolded _auth_* tenant helpers
+│   ├── _auth_chart.sql        # Custom _auth_* helpers (if needed)
 │   └── _internal_admin.sql    # Shared _internal_admin_* utility functions
 └── api/
-    ├── chart.sql             # api.chart_* functions + grants
-    ├── tenant.sql
-    └── profile.sql
+    ├── tenant.sql             # Scaffolded api.tenant_* + invitation + membership RPCs
+    ├── profile.sql            # Scaffolded api.profile_* RPCs
+    └── chart.sql              # Custom api.chart_* functions
 ```
 
 Files are grouped by Postgres schema (`public/`, `api/`) with entity-centric files inside. Statement ordering is handled automatically by `supabase db diff --use-pg-delta`.
@@ -35,8 +37,31 @@ Files are grouped by Postgres schema (`public/`, `api/`) with entity-centric fil
 **Conventions:**
 - `public/` files = **plural** (match table names): `charts.sql`
 - `api/` files = **singular** (match entity): `chart.sql`
-- `_` prefix = shared/infrastructure: `_auth.sql`, `_internal_admin.sql`, `_schemas.sql`
+- `_` prefix = shared/infrastructure: `_auth_{entity}.sql`, `_internal_admin.sql`, `_schemas.sql`
 - Entity files in `public/` contain everything for that entity: table, indexes, triggers, policies
+- Tables with FK dependencies that must be created in order go in a single file (e.g., `multitenancy.sql` for tenants → memberships → invitations)
+
+### Schema File Style Rules
+
+- No `DROP` statements in schema files — clean declarations only
+- Use: `CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE FUNCTION`, `CREATE INDEX IF NOT EXISTS`, plain `CREATE POLICY`, plain `CREATE TRIGGER`
+- `DROP` statements belong in migrations only (for renaming/cleanup)
+- Reason: schema files represent desired state for `db diff`; drops create phantom diffs
+
+### `@agentlink` Annotations
+
+Never add `-- @agentlink` comment annotations to SQL files. These are reserved metadata for CLI-scaffolded resources only — the CLI's `info` command parses them. The agent can add regular SQL comments but must never use the `-- @agentlink` prefix.
+
+```sql
+-- @agentlink my_function    ← WRONG, agent must not add this
+-- @type function             ← WRONG
+```
+
+Regular comments are fine:
+```sql
+-- Creates a new chart for the authenticated user
+CREATE OR REPLACE FUNCTION api.chart_create(...)
+```
 
 **Which schema for what:**
 - `api.*` — Client-facing RPCs (the only things exposed via the Data API)
@@ -57,6 +82,18 @@ Files are grouped by Postgres schema (`public/`, `api/`) with entity-centric fil
 
 5. **Generate types** — `supabase gen types typescript --local > src/types/database.ts`
 6. **Create migration** — `supabase db diff --use-pg-delta -f descriptive_migration_name`
+
+### Cloud mode
+
+The same loop applies, but with cloud-specific commands. Check `CLAUDE.md` for the remote `psql` connection string.
+
+1. **Write SQL** to the appropriate schema file
+2. **Apply live** — Run the same SQL via `psql` using the remote connection string from `CLAUDE.md`
+3. **Fix errors** with more SQL — never reset the database
+4. **Iterate** until the feature is complete
+5. **Generate types** — `supabase gen types typescript --project-id <ref> > src/types/database.ts`
+6. **Create migration** — `supabase db diff --use-pg-delta -f descriptive_name --linked`
+7. **Push to cloud** — `supabase db push`
 
 > **📝 Load [Development](./references/workflow.md) for the full workflow, error handling, and worked examples (new entity, new field, triggers).**
 

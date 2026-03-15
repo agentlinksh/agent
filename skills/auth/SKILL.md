@@ -37,7 +37,9 @@ Client → api.chart_get_by_id()  → RLS filters by user → returns only allow
 
 ### Profile creation on sign-up
 
-User metadata belongs in a `profiles` table, not in Supabase Auth metadata. Create profiles automatically with a trigger:
+> **Scaffolded by the CLI.** Profiles, tenants, and memberships are created automatically on signup via the `_internal_admin_handle_new_user` trigger. The SQL below is for reference — it already exists in your project. If missing, run `npx create-agentlink --force-update` — do not recreate manually.
+
+User metadata belongs in a `profiles` table, not in Supabase Auth metadata. The trigger creates the profile, a default tenant, an owner membership, and sets JWT claims:
 
 ```sql
 -- supabase/schemas/public/profiles.sql
@@ -54,21 +56,58 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ```
 
 ```sql
--- Trigger function: supabase/schemas/public/_internal_admin.sql
--- Trigger: supabase/schemas/public/profiles.sql
+-- Trigger function: supabase/schemas/public/_internal_admin.sql (scaffolded)
+-- Trigger: supabase/schemas/public/profiles.sql (scaffolded)
 CREATE OR REPLACE FUNCTION public._internal_admin_handle_new_user()
-RETURNS trigger
+RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER  -- required: reads from auth.users which RLS can't access
 SET search_path = ''
 AS $$
+DECLARE
+  v_display_name text;
+  v_tenant_id uuid;
+  v_slug text;
 BEGIN
-  INSERT INTO public.profiles (id, email, display_name)
+  v_display_name := COALESCE(
+    NEW.raw_user_meta_data->>'display_name',
+    NEW.raw_user_meta_data->>'full_name',
+    NEW.raw_user_meta_data->>'name',
+    split_part(NEW.email, '@', 1)
+  );
+
+  -- Create profile
+  INSERT INTO public.profiles (id, email, display_name, avatar_url)
   VALUES (
     NEW.id,
     NEW.email,
-    COALESCE(NEW.raw_user_meta_data ->> 'full_name', split_part(NEW.email, '@', 1))
+    v_display_name,
+    COALESCE(
+      NEW.raw_user_meta_data->>'avatar_url',
+      NEW.raw_user_meta_data->>'picture'
+    )
   );
+
+  -- Create default tenant
+  v_slug := regexp_replace(lower(split_part(NEW.email, '@', 1)), '[^a-z0-9]', '-', 'g')
+    || '-' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 8);
+
+  INSERT INTO public.tenants (name, slug)
+  VALUES (v_display_name || '''s Workspace', v_slug)
+  RETURNING id INTO v_tenant_id;
+
+  -- Create owner membership
+  INSERT INTO public.memberships (tenant_id, user_id, role)
+  VALUES (v_tenant_id, NEW.id, 'owner');
+
+  -- Set JWT claims
+  UPDATE auth.users
+  SET raw_app_meta_data = COALESCE(raw_app_meta_data, '{}'::jsonb) || jsonb_build_object(
+    'tenant_id', v_tenant_id,
+    'tenant_role', 'owner'
+  )
+  WHERE id = NEW.id;
+
   RETURN NEW;
 END;
 $$;
@@ -81,8 +120,10 @@ CREATE TRIGGER trg_auth_users_new_user
 
 ### Profile RPCs
 
+> **Scaffolded by the CLI** in `supabase/schemas/api/profile.sql`.
+
 ```sql
--- supabase/schemas/api/profile.sql
+-- supabase/schemas/api/profile.sql (scaffolded)
 CREATE OR REPLACE FUNCTION api.profile_get()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -172,7 +213,7 @@ This is the simplest pattern. Use it when there's no tenant/team concept — the
 When access checks are more complex than a single column comparison, use `_auth_*` functions:
 
 ```sql
--- supabase/schemas/public/_auth.sql
+-- supabase/schemas/public/_auth_chart.sql
 CREATE OR REPLACE FUNCTION public._auth_chart_can_read(p_chart_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -202,17 +243,22 @@ USING (public._auth_chart_can_read(id));
 
 ## Multi-Tenancy Overview
 
-The multi-tenancy model uses three tables:
+> **Scaffolded by the CLI.** The CLI scaffolds a complete multi-tenancy model including tables, RLS policies, auth helpers, and API RPCs. If missing, run `npx create-agentlink --force-update` — do not recreate manually. The agent builds application-specific tables on top of this foundation.
+
+The multi-tenancy model uses three tables (all in `supabase/schemas/public/multitenancy.sql`):
 
 ```
 tenants          → The organizations/teams
 memberships      → Who belongs to which tenant, with what role
-tenant-scoped tables → Every row has a tenant_id column
+invitations      → Pending invitations to join a tenant
+tenant-scoped tables → Every row has a tenant_id column (agent creates these)
 ```
+
+On signup, `_internal_admin_handle_new_user()` automatically creates a default tenant and owner membership, and sets JWT claims. Auth helpers live in `supabase/schemas/public/_auth_tenant.sql`. API RPCs (6 functions: `tenant_select`, `tenant_list`, `tenant_create`, `invitation_create`, `invitation_accept`, `membership_list`) live in `supabase/schemas/api/tenant.sql`.
 
 Tenant context comes from JWT custom claims (`auth.jwt() -> 'app_metadata' ->> 'tenant_id'`), **not** from request parameters. RLS policies use this claim to filter rows automatically.
 
-> **Load [RLS Patterns](./references/rls_patterns.md) for the full multi-tenancy model, tenant tables, membership management, RBAC, invitation flows, and tenant-scoped RLS policies.**
+> **Load [RLS Patterns](./references/rls_patterns.md) for tenant-scoped RLS policies, RBAC, invitation flows, and patterns for new tenant-scoped tables.**
 
 ---
 
@@ -238,6 +284,4 @@ npx skills add resend/resend-skills resend/email-best-practices resend/react-ema
 
 ## Assets
 
-- **[Profile trigger SQL](./assets/profile_trigger.sql)** — Auto-create profile on sign-up
-- **[Tenant tables SQL](./assets/tenant_tables.sql)** — Tenants, memberships, and invitations tables
-- **[Common RLS policies](./assets/common_policies.sql)** — Reusable policy templates
+- **[Common RLS policies](./assets/common_policies.sql)** — Reusable policy templates for new entities

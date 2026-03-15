@@ -55,7 +55,7 @@ Deno.serve(
 );
 ```
 
-5. **Test locally** — `supabase functions serve`
+5. **Test** — Local: `supabase functions serve` / Cloud: `supabase functions deploy`
 
 ---
 
@@ -86,7 +86,7 @@ Edge functions need `SB_PUBLISHABLE_KEY` and `SB_SECRET_KEY` configured as secre
 SB_PUBLISHABLE_KEY=sb_publishable_...
 SB_SECRET_KEY=sb_secret_...
 
-# Production
+# Cloud / Production — set via CLI (already configured by scaffold)
 supabase secrets set SB_PUBLISHABLE_KEY=sb_publishable_...
 supabase secrets set SB_SECRET_KEY=sb_secret_...
 ```

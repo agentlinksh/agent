@@ -194,43 +194,43 @@ USING (
 
 ## Multi-Tenancy Model
 
+> **Scaffolded by the CLI.** These tables, auth helpers, and RPCs already exist in your project. This section is for reference and for building new tenant-scoped tables.
+
 ### Core tables
 
 ```sql
--- supabase/schemas/public/tenants.sql
+-- supabase/schemas/public/multitenancy.sql (scaffolded — all three tables in one file, FK order)
 CREATE TABLE IF NOT EXISTS public.tenants (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name text NOT NULL,
-  slug text UNIQUE NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
 
--- supabase/schemas/public/memberships.sql
 CREATE TABLE IF NOT EXISTS public.memberships (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  role text NOT NULL DEFAULT 'member' CHECK (role IN ('viewer', 'member', 'admin', 'owner')),
-  created_at timestamptz NOT NULL DEFAULT now(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member', 'viewer')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (tenant_id, user_id)
 );
 
 ALTER TABLE public.memberships ENABLE ROW LEVEL SECURITY;
 
--- supabase/schemas/public/invitations.sql
 CREATE TABLE IF NOT EXISTS public.invitations (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-  email text NOT NULL,
-  role text NOT NULL DEFAULT 'member' CHECK (role IN ('viewer', 'member', 'admin')),
-  invited_by uuid NOT NULL REFERENCES auth.users(id),
-  token text UNIQUE NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'),
-  expires_at timestamptz NOT NULL DEFAULT now() + interval '7 days',
-  accepted_at timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now()
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member', 'viewer')),
+  invited_by UUID NOT NULL REFERENCES auth.users(id),
+  token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '7 days'),
+  accepted_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE public.invitations ENABLE ROW LEVEL SECURITY;
@@ -257,24 +257,37 @@ $$;
 
 ### Tenant RLS policies
 
+> These policies are scaffolded by the CLI in `multitenancy.sql`.
+
 ```sql
 -- Tenants: members can see their own tenants
-CREATE POLICY "Members can read own tenants"
-ON public.tenants FOR SELECT
-USING (public._auth_is_tenant_member(id));
+CREATE POLICY "Members can read own tenant" ON public.tenants
+  FOR SELECT TO authenticated
+  USING (public._auth_is_tenant_member(id));
+
+-- Tenants: owners can update
+CREATE POLICY "Owners can update tenant" ON public.tenants
+  FOR UPDATE TO authenticated
+  USING (public._auth_is_tenant_member(id) AND public._auth_has_role('owner'));
 
 -- Memberships: members can see other members of their tenant
-CREATE POLICY "Members can read tenant memberships"
-ON public.memberships FOR SELECT
-USING (tenant_id = public._auth_tenant_id());
+CREATE POLICY "Members can read memberships in their tenant" ON public.memberships
+  FOR SELECT TO authenticated
+  USING (tenant_id = public._auth_tenant_id());
 
--- Memberships: only admins can manage members
-CREATE POLICY "Admins can manage memberships"
-ON public.memberships FOR INSERT
-WITH CHECK (
-  tenant_id = public._auth_tenant_id()
-  AND public._auth_has_role('admin')
-);
+-- Memberships: admins can add members
+CREATE POLICY "Admins can insert memberships" ON public.memberships
+  FOR INSERT TO authenticated
+  WITH CHECK (tenant_id = public._auth_tenant_id() AND public._auth_has_role('admin'));
+
+-- Memberships: admins can remove members (but not themselves)
+CREATE POLICY "Admins can delete memberships" ON public.memberships
+  FOR DELETE TO authenticated
+  USING (
+    tenant_id = public._auth_tenant_id()
+    AND public._auth_has_role('admin')
+    AND user_id != (SELECT auth.uid())
+  );
 ```
 
 ### Setting JWT claims
@@ -330,6 +343,8 @@ await supabase.auth.refreshSession();  // gets new JWT with tenant_id claim
 
 ## Invitation Flow
 
+> **Scaffolded by the CLI** in `supabase/schemas/api/tenant.sql`. These RPCs already exist.
+
 ### Invite (admin sends)
 
 ```sql
@@ -339,40 +354,33 @@ CREATE OR REPLACE FUNCTION api.invitation_create(
 )
 RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
+  v_user_id uuid := (SELECT auth.uid());
+  v_tenant_id uuid := public._auth_tenant_id();
   v_invitation record;
 BEGIN
   IF NOT public._auth_has_role('admin') THEN
-    RAISE EXCEPTION 'Only admins can invite members';
+    RAISE EXCEPTION 'Only admins can create invitations';
   END IF;
 
-  -- Check for existing membership
-  IF EXISTS (
-    SELECT 1 FROM public.memberships m
-    JOIN auth.users u ON u.id = m.user_id
-    WHERE m.tenant_id = public._auth_tenant_id() AND u.email = p_email
-  ) THEN
-    RAISE EXCEPTION 'User is already a member';
+  IF v_tenant_id IS NULL THEN
+    RAISE EXCEPTION 'No tenant selected';
   END IF;
 
   INSERT INTO public.invitations (tenant_id, email, role, invited_by)
-  VALUES (public._auth_tenant_id(), p_email, p_role, auth.uid())
+  VALUES (v_tenant_id, p_email, p_role, v_user_id)
   RETURNING * INTO v_invitation;
 
-  -- Send invitation email via edge function
-  PERFORM public._internal_admin_call_edge_function(
-    'send-invitation',
-    jsonb_build_object(
-      'email', p_email,
-      'token', v_invitation.token,
-      'tenant_id', public._auth_tenant_id()
-    )
+  RETURN jsonb_build_object(
+    'id', v_invitation.id,
+    'email', v_invitation.email,
+    'role', v_invitation.role,
+    'token', v_invitation.token,
+    'expires_at', v_invitation.expires_at
   );
-
-  RETURN jsonb_build_object('success', true, 'invitation_id', v_invitation.id);
 END;
 $$;
 ```
@@ -380,14 +388,16 @@ $$;
 ### Accept (invited user)
 
 ```sql
-CREATE OR REPLACE FUNCTION api.invitation_accept(p_token text)
+CREATE OR REPLACE FUNCTION api.invitation_accept(p_token uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER  -- required: creates membership and reads invitations across tenants
 SET search_path = ''
 AS $$
 DECLARE
+  v_user_id uuid := (SELECT auth.uid());
   v_invitation record;
+  v_tenant record;
 BEGIN
   -- Find and validate invitation
   SELECT * INTO v_invitation
@@ -402,7 +412,7 @@ BEGIN
 
   -- Create membership
   INSERT INTO public.memberships (tenant_id, user_id, role)
-  VALUES (v_invitation.tenant_id, auth.uid(), v_invitation.role)
+  VALUES (v_invitation.tenant_id, v_user_id, v_invitation.role)
   ON CONFLICT (tenant_id, user_id) DO NOTHING;
 
   -- Mark invitation as accepted
@@ -410,9 +420,22 @@ BEGIN
   SET accepted_at = now()
   WHERE id = v_invitation.id;
 
-  RETURN jsonb_build_object(
-    'success', true,
+  SELECT * INTO v_tenant
+  FROM public.tenants
+  WHERE id = v_invitation.tenant_id;
+
+  -- Set JWT claims to the new tenant
+  UPDATE auth.users
+  SET raw_app_meta_data = COALESCE(raw_app_meta_data, '{}'::jsonb) || jsonb_build_object(
     'tenant_id', v_invitation.tenant_id,
+    'tenant_role', v_invitation.role
+  )
+  WHERE id = v_user_id;
+
+  RETURN jsonb_build_object(
+    'id', v_tenant.id,
+    'name', v_tenant.name,
+    'slug', v_tenant.slug,
     'role', v_invitation.role
   );
 END;

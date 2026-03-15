@@ -11,11 +11,13 @@ metadata:
 
 Connecting frontend applications to the Supabase backend. Client initialization, RPC calls, auth state, environment variables, and type safety.
 
+The CLI scaffolds React + Vite + React Router v7 by default. Next.js is available with `--nextjs`. Both use `{ db: { schema: 'api' } }` — the difference is client initialization and auth handling.
+
 ## Client Initialization
 
-### Browser / SPA apps
+### Vite / SPA (default)
 
-For client-side only apps (React SPA, Vue, etc.) without server-side rendering:
+Scaffolded by the CLI. Uses `@supabase/supabase-js` directly. For client-side only apps (React SPA, Vue, etc.) without server-side rendering:
 
 ```typescript
 import { createClient } from "@supabase/supabase-js";
@@ -27,9 +29,9 @@ const supabase = createClient(
 );
 ```
 
-### SSR frameworks
+### Next.js / SSR (`--nextjs`)
 
-For frameworks with server-side rendering (Next.js, SvelteKit, Nuxt), use `@supabase/ssr`:
+For projects created with `npx create-agentlink <name> --nextjs`. Uses `@supabase/ssr` for cookie-based session management:
 
 ```typescript
 import { createBrowserClient } from "@supabase/ssr";
@@ -63,9 +65,9 @@ const supabase = createServerClient(
 
 | Framework | URL | Publishable key | Secret key (server-only) |
 |-----------|-----|-----------------|--------------------------|
+| Vite (React, Vue) | `VITE_SUPABASE_URL` | `VITE_SUPABASE_PUBLISHABLE_KEY` | N/A (no server) |
 | Next.js | `NEXT_PUBLIC_SUPABASE_URL` | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `SUPABASE_SECRET_KEY` |
 | SvelteKit | `PUBLIC_SUPABASE_URL` | `PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `SUPABASE_SECRET_KEY` |
-| Vite (React, Vue) | `VITE_SUPABASE_URL` | `VITE_SUPABASE_PUBLISHABLE_KEY` | N/A (no server) |
 | Astro | `PUBLIC_SUPABASE_URL` | `PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `SUPABASE_SECRET_KEY` |
 
 ### What's safe to expose
@@ -73,13 +75,11 @@ const supabase = createServerClient(
 - **Client-safe:** Supabase URL and publishable key. These are embedded in the browser bundle. They only grant access through RLS policies — the `api` schema + RLS is the security boundary, not the key.
 - **Server-only:** Secret key (service role key). Bypasses RLS entirely. Never expose to the client. Use only in server-side code, edge functions, or API routes.
 
-### Finding local values
+### Finding connection values
 
-```bash
-supabase status
-```
+**Local:** Run `supabase status` — prints the local API URL, publishable key, and secret key. Use these in your `.env.local` for development.
 
-This prints the local API URL, publishable key, and secret key. Use these in your `.env.local` for development.
+**Cloud:** Read from `.env.local` — values are pre-configured by the CLI scaffold. Do not use `supabase status`.
 
 ---
 
@@ -136,7 +136,11 @@ const { data, error } = await supabase.rpc("chart_list");
 Generate TypeScript types from your database schema:
 
 ```bash
+# Local
 supabase gen types typescript --local > src/types/database.ts
+
+# Cloud (project ref from agentlink.json or CLAUDE.md)
+supabase gen types typescript --project-id <ref> > src/types/database.ts
 ```
 
 Use the generated types with the Supabase client:
@@ -205,6 +209,17 @@ await supabase.auth.refreshSession();
 
 Without this, RLS policies use stale claims until the token naturally expires.
 
+### Scaffolded auth (Vite projects)
+
+The Vite scaffold provides pre-built auth components and patterns:
+
+- **`useAuth` hook** — Manages auth state, provides `user`, `session`, `signIn`, `signUp`, `signOut`
+- **`AuthGuard` component** — Wraps protected routes, redirects unauthenticated users to login
+- **Pre-built pages** — Login, signup, and auth callback pages in `src/pages/`
+- **React Router v7 routing** — Route protection via layout components
+
+Check `src/components/` and `src/pages/` before building auth UI from scratch.
+
 ### Protected route pattern
 
 ```typescript
@@ -240,7 +255,7 @@ These community-maintained skills enhance frontend workflows when installed alon
 
 - **`frontend-design`** — Invoke during project planning when UI components or pages are being designed. Provides design patterns and component architecture guidance.
 - **`vercel-react-best-practices`** — Invoke during React component work. Only applicable if the project uses React.
-- **`next-best-practices`** — Invoke during Next.js-specific work (routing, server components, data fetching). Only applicable if the project uses Next.js.
+- **`next-best-practices`** — Invoke during Next.js-specific work (routing, server components, data fetching). Only applicable to `--nextjs` projects.
 
 If available, these skills are invoked automatically at the right points in the workflow. They are not required — the frontend skill works without them.
 

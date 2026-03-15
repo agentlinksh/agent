@@ -21,7 +21,7 @@ Calls `supabase migration repair <version> --status applied --local` for each ve
 
 ## Pre-Start Migrations
 
-**Purpose:** Infrastructure that must exist before `supabase start` runs the DB.
+**Purpose:** Infrastructure that must exist before `supabase start` runs the DB. Infrastructure migrations contain ONLY extensions, schema creation, and grants. Tables, functions, and policies belong in schema files and are captured by `db diff`.
 
 **Contents:**
 - `agentlink_infrastructure` — Creates `api` schema + grants, extensions (`pg_net`, `pg_cron`, `pgmq`)

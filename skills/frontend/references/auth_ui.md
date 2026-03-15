@@ -2,10 +2,72 @@
 
 Client-side authentication UI — sign-in/sign-up forms, OAuth redirect flows, and protected routes.
 
+> **Vite projects:** Auth forms are scaffolded — check `src/components/` and `src/pages/` before building from scratch.
+
 ## Contents
+- Vite Auth Patterns (scaffolded)
 - Sign-In / Sign-Up Forms
 - OAuth Redirect Flow
 - Protected Routes
+
+---
+
+## Vite Auth Patterns (scaffolded)
+
+### Auth callback (PKCE flow)
+
+The Vite scaffold handles auth callbacks via `onAuthStateChange`. This is used for OAuth redirects, magic links, and email confirmations:
+
+```typescript
+// src/pages/AuthCallback.tsx (scaffolded)
+import { useEffect } from "react";
+import { useNavigate } from "react-router";
+import { supabase } from "@/lib/supabase";
+
+export function AuthCallback() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event) => {
+        if (event === "SIGNED_IN") {
+          navigate("/dashboard", { replace: true });
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  return <div>Completing sign in...</div>;
+}
+```
+
+### AuthGuard (protected routes)
+
+The Vite scaffold includes an `AuthGuard` component for protecting routes:
+
+```typescript
+// src/components/AuthGuard.tsx (scaffolded)
+import { useAuth } from "@/hooks/useAuth";
+import { Navigate } from "react-router";
+
+export function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+
+  return <>{children}</>;
+}
+```
+
+Used in route definitions:
+```typescript
+<Route element={<AuthGuard><DashboardLayout /></AuthGuard>}>
+  <Route path="/dashboard" element={<Dashboard />} />
+</Route>
+```
 
 ---
 

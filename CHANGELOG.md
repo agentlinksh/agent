@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.7.0] - 2026-03-15
+
+Cloud mode support — the plugin now works with both local Docker development and cloud-hosted Supabase projects. Every skill, the builder agent, and the CLI skill have been updated with mode-aware commands and workflows.
+
+### Added
+
+- **Cloud mode** across all skills — local vs cloud command tables, `--linked` flag for migrations, `db push` for deploying, remote connection strings
+- Project mode detection: agent reads `CLAUDE.md` or `agentlink.json` to determine local vs cloud mode
+- Cloud-specific environment section in builder agent with mode-separated tool reference table
+- Expanded `_internal_admin_handle_new_user` trigger: now creates default tenant, owner membership, and sets JWT claims on signup
+- `@agentlink` annotation guidance — agent should never add CLI metadata annotations to SQL files
+- Cloud mode migration workflow (diff with `--linked`, deploy with `db push`)
+- Cloud mode troubleshooting scenarios in CLI skill
+
+### Changed
+
+- Builder agent planning: CLI scaffolds React + Vite by default (Next.js via `--nextjs`), work with existing frontend instead of asking
+- Architecture diagram updated to distinguish scaffolded resources (profiles, tenants, memberships, auth helpers) from agent-built entities
+- Auth skill: profiles, tenants, memberships, invitations, and their RPCs now documented as "scaffolded by CLI" with reference-only SQL
+- Multi-tenancy section rewritten around scaffolded foundation — agent builds on top, not from scratch
+- RLS patterns reference updated: scaffolded resources marked, new "adding tenant-scoped tables" guidance
+- Schema file tree shows scaffolded vs agent-built files
+- `_auth.sql` renamed to `_auth_chart.sql` in examples (one file per entity pattern)
+- Database workflow reference updated for cloud mode
+- Naming conventions reference updated
+- Frontend and SSR references updated for cloud mode and React + Vite default
+
+### Removed
+
+- `skills/auth/assets/profile_trigger.sql` — now CLI-owned
+- `skills/auth/assets/tenant_tables.sql` — now CLI-owned
+- Per-tool "Via" column in tools reference (replaced by local/cloud comparison)
+
 ## [0.6.1] - 2026-03-02
 
 ### Added

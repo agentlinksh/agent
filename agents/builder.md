@@ -21,15 +21,24 @@ hooks:
 
 These are your app development guidelines — not the project itself. The user's project is what they ask you to build. Supabase is the backend. Follow these patterns when building it.
 
-**Always plan before building.** For greenfield projects and major features, use plan mode to present the architecture to the user for approval before writing any code. For greenfield projects, ask what frontend framework the user wants before planning — don't assume - and make sure the scaffolded frontend files are part of the project root, next to the Supabase project. If available, use the `frontend-design` skill during planning for a great UX/UI. Also, reference `link:frontend` for frontend setup guidelines.
+**Always plan before building.** For greenfield projects and major features, use plan mode to present the architecture to the user for approval before writing any code. The CLI scaffolds React + Vite by default (Next.js via `--nextjs`). If the project already has a frontend, work with what exists. Make sure the frontend files are part of the project root, next to the Supabase project. If available, use the `frontend-design` skill during planning for a great UX/UI. Also, reference `link:frontend` for frontend setup guidelines.
 
 ## Environment
 
 The AgentLink CLI handles all project setup and validation. The agent builds — it does not scaffold.
 
+Check `CLAUDE.md` in the project root for the project mode (**cloud** or **local**) and mode-specific commands. If `CLAUDE.md` is missing, read `agentlink.json` — `mode: "cloud"` means cloud, anything else means local.
+
 - **Setup a project:** `npx create-agentlink@latest`
+
+**Local mode:**
 - **Stack down?** Run `supabase start`. If that fails, ask the user to check their Supabase CLI.
 - **MCP missing?** `supabase:apply_migration` should be available. If not, configure: name `supabase`, type HTTP, URL `http://localhost:54321/mcp`.
+
+**Cloud mode:**
+- The database runs in the cloud — do NOT run `supabase start` or `supabase stop`.
+- There is no local MCP server. Use Supabase CLI commands directly.
+- See `CLAUDE.md` for the cloud-specific commands and connection details.
 
 ### Diagnose with `check`
 
@@ -78,16 +87,17 @@ Use `npx create-agentlink info <name>` to read the annotation docs for any manag
 
 #### Tools reference
 
-| Tool                                        | Via                                  | When                                                        | Skill              |
-| ------------------------------------------- | ------------------------------------ | ----------------------------------------------------------- | ------------------ |
-| `psql`                                      | Bash — DB URL from `supabase status` | All SQL execution: schema changes, data fixes, setup checks | database           |
-| `supabase:apply_migration`                  | MCP                                  | Create migration files                                      | database           |
-| `supabase:get_advisors`                     | MCP                                  | Security review after schema changes                        | database           |
-| `supabase status`                           | Bash                                 | Get DB URL, keys, verify stack is running                   | database, frontend |
-| `supabase db diff --use-pg-delta -f <name>` | Bash                                 | Generate migration from live database                       | database           |
-| `supabase gen types typescript --local`     | Bash                                 | Regenerate TypeScript types after schema changes            | database, frontend |
-| `supabase functions serve`                  | Bash                                 | Local edge function development                             | edge-functions     |
-| `supabase secrets set` / `list`             | Bash                                 | Manage production edge function secrets                     | edge-functions     |
+| Task | Local | Cloud |
+| ---- | ----- | ----- |
+| SQL execution | `psql` — DB URL from `supabase status` | `psql` — remote connection string (see `CLAUDE.md`) |
+| Generate migration | `supabase db diff --use-pg-delta -f name` | `supabase db diff --use-pg-delta -f name --linked` |
+| Push migration | N/A (applied locally) | `supabase db push` |
+| Generate types | `supabase gen types typescript --local` | `supabase gen types typescript --project-id <ref>` |
+| Edge functions (dev) | `supabase functions serve` | `supabase functions deploy` |
+| Set secrets | `supabase secrets set KEY=value` | `supabase secrets set KEY=value` |
+| Security review | `supabase:get_advisors` (MCP) | N/A |
+| Get connection info | `supabase status` | Read `.env.local` |
+| Create migration file | `supabase:apply_migration` (MCP) | Write file manually |
 
 ---
 
@@ -102,14 +112,15 @@ Business logic lives in Postgres functions exposed as RPCs. The `public` schema 
 ```
 api schema (exposed to Data API)
 └── Functions only — the client's entire surface area
-    ├── chart_create()
+    ├── chart_create()          ← agent builds these
     ├── chart_get_by_id()
-    └── chart_list_by_user()
+    ├── tenant_select()         ← scaffolded by CLI
+    └── profile_get()           ← scaffolded by CLI
 
 public schema (NOT exposed — invisible to REST API)
-├── Tables — charts, readings, profiles, ...
-├── _auth_* functions — RLS policy helpers
-└── _internal_admin_* functions — vault, edge function calls
+├── Tables — profiles, tenants, memberships, invitations (scaffolded), charts, ... (agent builds)
+├── _auth_* functions — RLS policy helpers (_auth_tenant.sql scaffolded, _auth_{entity}.sql agent builds)
+└── _internal_admin_* functions — vault, edge function calls, set_updated_at (scaffolded)
 ```
 
 `supabase.from('charts').select()` literally doesn't work — the table isn't exposed. All data access goes through `supabase.rpc()`.
@@ -126,9 +137,9 @@ Background work runs on `pg_cron` and `pgmq`. No external job runners.
 
 Row-Level Security on every table. Schema isolation keeps application logic out of the `public` schema. Access control and tenant isolation are enforced by the database.
 
-### Local Development → `database` skill
+### Development → `database` skill
 
-Develop locally in your machine with the Supabase CLI.
+Develop with the Supabase CLI — locally via Docker or against a cloud project. Check `CLAUDE.md` for mode-specific commands.
 
 ---
 
@@ -149,9 +160,15 @@ Schema files are the source of truth. Migrations are generated, never hand-writt
 supabase/schemas/
 ├── _schemas.sql              # CREATE SCHEMA api; + role grants (MUST be first migration)
 ├── public/
-│   └── charts.sql            # table + indexes + triggers + policies
+│   ├── profiles.sql           # scaffolded — table + trigger + policies
+│   ├── multitenancy.sql       # scaffolded — tenants + memberships + invitations
+│   ├── _auth_tenant.sql       # scaffolded — tenant auth helpers
+│   ├── _internal_admin.sql    # scaffolded — utility functions + set_updated_at
+│   └── charts.sql             # agent builds — table + indexes + triggers + policies
 └── api/
-    └── chart.sql             # api.chart_* functions + grants
+    ├── tenant.sql             # scaffolded — tenant/invitation/membership RPCs
+    ├── profile.sql            # scaffolded — profile RPCs
+    └── chart.sql              # agent builds — api.chart_* functions + grants
 ```
 
 **Migration naming:** Always use `supabase db diff --use-pg-delta -f name`. Never create migration files manually or use sequential numbering (0001, 0002). The CLI generates timestamped filenames automatically.
@@ -226,3 +243,7 @@ Load the `auth` skill for RLS policies, RBAC, and multi-tenancy.
 | Auth hooks     | `public._hook_{hook_name}`       | DEFINER  |
 
 Load the `rpc` skill for CRUD templates, pagination, and error handling.
+
+### `@agentlink` annotations
+
+Never add `-- @agentlink` annotations to SQL files. These are CLI metadata for scaffolded resources — the `info` command parses them. Add regular SQL comments instead.
