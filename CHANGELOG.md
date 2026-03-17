@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-03-16
+
 ### Changed
 
 - **Development loop simplified** — agent only uses `db apply` during development. Migrations removed from the build loop and repositioned as a deployment concern, generated only when the user explicitly asks.
