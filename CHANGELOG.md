@@ -5,6 +5,8 @@
 ### Added
 
 - **Language matching** — builder agent now responds in the user's language (chat, planning, explanations) while keeping all code in English
+- **Deployment commands** in builder agent — tools reference table now includes `deploy`, `env use`, and `env list`; new Deployment section explains that deployment is developer-initiated and lists available commands
+- **Deployment section** in CLI skill — `deploy` command workflow (diff, validate, push), `--dry-run` / `--ci` / `--env` flags, and environment management commands (`env add`, `env use`, `env list`, `env remove`)
 
 ## [0.8.1] - 2026-03-16
 
