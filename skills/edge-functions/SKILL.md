@@ -1,11 +1,6 @@
 ---
 name: edge-functions
 description: Supabase Edge Functions. Use when the task involves creating, modifying, or debugging edge functions, webhooks, external API integrations, service-to-service calls, or anything that runs in the Deno edge runtime. Also use for configuring edge function secrets, config.toml, or migrating from legacy Supabase API keys (anon/service_role to publishable/secret). Activate whenever the task touches supabase/functions/ or mentions edge functions.
-license: MIT
-compatibility: Requires Supabase CLI
-metadata:
-  author: agentlink
-  version: "0.1"
 ---
 
 # Edge Functions

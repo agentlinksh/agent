@@ -1,10 +1,6 @@
 ---
 name: frontend
 description: Supabase client integration for frontend applications. Use when the task involves initializing the Supabase client, calling RPCs from frontend code, setting up environment variables for Supabase, managing auth sessions on the client, using `@supabase/ssr`, or connecting any frontend framework to the Supabase backend.
-license: MIT
-metadata:
-  author: agentlink
-  version: "0.1"
 ---
 
 # Frontend — Supabase Client Integration

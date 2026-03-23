@@ -1,11 +1,6 @@
 ---
 name: database
 description: Schema files, migrations, and type generation for Supabase Postgres. Use when the task involves creating or modifying tables, columns, indexes, triggers, RLS policies, or database functions. Activate whenever the task touches supabase/schemas/, supabase/migrations/, or involves structural database changes.
-license: MIT
-compatibility: Requires Supabase CLI and psql. MCP server available in local mode only.
-metadata:
-  author: agentlink
-  version: "0.1"
 ---
 
 # Database

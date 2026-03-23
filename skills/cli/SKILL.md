@@ -1,10 +1,6 @@
 ---
 name: cli
 description: AgentLink CLI usage, project scaffolding, updates, and migration management. Use when the task involves running agentlink commands, managing migrations, troubleshooting db diff issues, fixing migration files, or understanding the relationship between schema files and migrations.
-license: MIT
-metadata:
-  author: agentlink
-  version: "0.1"
 ---
 
 # CLI

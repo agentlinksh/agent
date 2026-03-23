@@ -9,12 +9,6 @@ skills:
   - auth
   - edge-functions
   - frontend
-hooks:
-  PreToolUse:
-    - matcher: Bash
-      hooks:
-        - type: command
-          command: bash ${CLAUDE_PLUGIN_ROOT}/hooks/block-destructive-db.sh
 ---
 
 # App Development
