@@ -7,6 +7,15 @@
 - **Desktop/Cowork support** — builder agent now detects Supabase connector MCP and uses `--link` flag for non-interactive project setup from Claude Desktop and Cowork apps
 - **`--local` flag** documented in CLI skill flags table (cloud is default, `--local` opts into Docker mode)
 - **`db sql` command** added to builder agent tools table for single SQL statements (works in both local and cloud mode)
+- **Database operations section** in CLI skill — `db apply`, `db sql`, `db types`, `db migrate` with full flag examples (`--env`, `--db-url`, `--json`, `--output`)
+- **Database recovery section** in CLI skill — `db rebuild` for broken migration state, `db url --fix` for connection issues
+- **`db password` command** in CLI skill — show/set cloud DB password when reset in dashboard
+- **New CLI flags** — `--prompt`, `--resume`, `--non-interactive` documented in flags table
+- **`env relink` command** — reconnect environment to a new Supabase project while keeping migrations
+- **Non-interactive env commands** — `env add --project-ref --non-interactive`, `env relink --non-interactive`, `env remove -y`
+- **Deploy flags** — `--allow-warnings` for CI, `--setup-ci` for GitHub Actions scaffold
+- **Troubleshooting entries** — DB URL issues, vault duplicate key errors, duplicate migration files, cloud project deletion recovery, psql-not-found in cloud mode, OAuth login timeout
+- **Builder tools table** — added rows for `env add`, `env remove`, `env relink`, `db password`, `db url --fix`, `db rebuild`
 
 ### Changed
 
@@ -15,6 +24,9 @@
 - **Type generation references** updated across frontend skill and database workflow reference to use `db types`
 - **CLI skill scaffold flow** updated with interactive and `--link` variants; update flow now references pgdelta/CLI commands instead of psql/db-diff
 - **Environment setup** — builder agent restructured with "New project setup" (Option A: Supabase connector MCP, Option B: terminal) and "Ongoing development" sections
+- **Check command** now shows `--env` flag for checking specific environments
+- **Deploy section** expanded with `--allow-warnings` and `--setup-ci` flags
+- **Environment management** reorganized into interactive and non-interactive sections with `env relink` docs
 
 ## [0.10.0] - 2026-03-23
 

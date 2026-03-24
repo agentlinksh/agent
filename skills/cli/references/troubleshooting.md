@@ -96,6 +96,96 @@ npx @agentlink.sh/cli@latest --force-update
 
 ---
 
+## Supabase & DB Connection Issues
+
+### DB URL is wrong / connection refused
+
+**Symptom:** `db apply` or `db sql` fails with connection errors, timeouts, or "Invalid URL".
+
+**Fix:**
+```bash
+npx @agentlink.sh/cli@latest db url --fix
+```
+Fetches the correct pooler URL from the Supabase Management API and updates `.env.local`. Run `db url` (without `--fix`) first to see the current vs expected URL.
+
+---
+
+### Vault secret duplicate key error
+
+**Symptom:** `duplicate key value violates unique constraint "secrets_name_idx"` during scaffold setup.
+
+**Cause:** Scaffold ran multiple times on the same cloud project. The CLI now uses `vault.update_secret()` for existing secrets (fixed in v0.11.1+). If you're on an older version, update the CLI.
+
+**Fix:** Update to the latest CLI version and re-run. The vault upsert handles this automatically.
+
+---
+
+### Duplicate migration files from repeated scaffold runs
+
+**Symptom:** Multiple `agentlink_setup.sql` files in `supabase/migrations/` with different timestamps. `supabase db push` may fail.
+
+**Cause:** Each scaffold run created a new setup migration instead of detecting the existing one. Fixed in v0.11.1+, but if you already have duplicates:
+
+**Fix:**
+```bash
+npx @agentlink.sh/cli@latest db rebuild
+```
+Deletes all migration files, re-applies schemas, and regenerates a single clean migration.
+
+---
+
+### `supabase db push` fails with "Remote migration versions not found"
+
+**Symptom:** `Remote migration versions not found in local migrations directory` — the cloud database has migration versions that don't exist locally.
+
+**Cause:** Migration files were recreated with new timestamps (from repeated scaffold runs), so the remote versions no longer match local files.
+
+**Fix:**
+```bash
+# Option 1: Full rebuild (easiest for new projects)
+npx @agentlink.sh/cli@latest db rebuild
+
+# Option 2: Manual repair (if you need to keep specific migrations)
+supabase migration repair --status reverted <version1> <version2> ...
+```
+
+---
+
+### Cloud project was deleted / need to point at a different project
+
+**Symptom:** CLI commands fail because the Supabase project no longer exists, or you need to switch to a different project.
+
+**Fix:**
+```bash
+npx @agentlink.sh/cli@latest env relink dev
+```
+Connects to a new (or existing) Supabase project, updates all credentials and `.env.local`, links, pushes existing migrations, and deploys edge functions. Migrations are preserved.
+
+---
+
+### `psql` not found in cloud mode
+
+**Symptom:** `psql is required but not installed` error during scaffold.
+
+**Cause:** Old CLI version checked for psql even in cloud mode. Fixed in v0.10.2+.
+
+**Fix:** Update to the latest CLI version. Cloud mode uses the Supabase Management API — psql is not needed.
+
+---
+
+### OAuth login timeout / expired auth link
+
+**Symptom:** Browser opens for Supabase login but the CLI doesn't receive the callback, or the auth link expired.
+
+**Fix:** The CLI checks in after 30 seconds with options to:
+- **Keep waiting** — if you're still completing signup
+- **Retry** — opens a fresh browser session with new credentials
+- **Cancel** — exit and try again later
+
+If the browser didn't open, copy the URL from the terminal manually.
+
+---
+
 ## Manual Migration Operations
 
 ### Create a migration file manually
@@ -165,3 +255,9 @@ rm supabase/migrations/<version>_name.sql
 | CLI version is outdated | `npx @agentlink.sh/cli@latest --force-update` |
 | Migration references non-existent object | Fix ordering or merge migrations |
 | Need to undo a migration | `repair --status reverted` + delete file |
+| DB URL is wrong / connection fails | `npx @agentlink.sh/cli@latest db url --fix` |
+| Duplicate migration files | `npx @agentlink.sh/cli@latest db rebuild` |
+| `db push` says remote versions not found | `npx @agentlink.sh/cli@latest db rebuild` |
+| Cloud project deleted / need new project | `npx @agentlink.sh/cli@latest env relink dev` |
+| Broken migration state on new project | `npx @agentlink.sh/cli@latest db rebuild` |
+| DB password was reset in dashboard | `npx @agentlink.sh/cli@latest db password "newpass"` |
