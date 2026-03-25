@@ -34,7 +34,7 @@ This is **not** just an env var rename. The migration touches client code, edge 
 | Edge function auth | Manual `createClient()` + gateway JWT check | `withSupabase` wrapper handles auth |
 | Edge function config | `verify_jwt = true` (default) | `verify_jwt = false` (required) |
 | Edge function secrets | `SUPABASE_ANON_KEY` env | `SB_PUBLISHABLE_KEY` + `SB_SECRET_KEY` env |
-| Edge function shared code | Custom `supabase.ts`, `supabase-admin.ts` | `withSupabase.ts`, `responses.ts` — CORS from SDK |
+| Edge function shared code | Custom `supabase.ts`, `supabase-admin.ts` | `@supabase/server` (npm) + `responses.ts` — CORS from SDK |
 | Vault secrets | None or old names | `SB_PUBLISHABLE_KEY`, `SB_SECRET_KEY`, `SUPABASE_URL` |
 | Seed file | No vault secrets | Vault secrets for persistence across `db reset` |
 
@@ -76,7 +76,7 @@ This is the largest part of the migration. Each step below must be completed.
 
 ### 1. Set up shared utilities
 
-Check if `supabase/functions/_shared/withSupabase.ts` exists. If not, tell the user to run `npx @agentlink.sh/cli@latest` to install the shared utilities (`withSupabase.ts`, `responses.ts`, `types.ts`).
+Check if `supabase/functions/_shared/responses.ts` exists. If not, tell the user to run `npx @agentlink.sh/cli@latest` to install the shared utilities (`responses.ts`, `types.ts`). The `withSupabase` wrapper comes from the `@supabase/server` npm package, declared in each function's `deno.json`.
 
 ### 2. Set `verify_jwt = false` in `config.toml`
 
@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
 **After** — `withSupabase` handles auth, clients, and CORS:
 
 ```typescript
-import { withSupabase } from "../_shared/withSupabase.ts";
+import { withSupabase } from "@supabase/server";
 import { jsonResponse, errorResponse } from "../_shared/responses.ts";
 
 Deno.serve(

@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Dependencies & Deployment reference** — new `references/dependencies.md` covering per-function `deno.json` import maps, bare specifiers, sub-path mapping, version pinning, `--use-api` deployment isolation, and anti-patterns
+- **`@supabase/server` as npm package** — `withSupabase` now imports from `@supabase/server` via bare specifier instead of local `_shared/withSupabase.ts`
+- **Per-function `deno.json` requirement** — added to IMPORTANT rules, project structure, and new function checklist in SKILL.md
+- **Version pinning enforcement** — pinned versions required in all `deno.json` entries; unversioned specifiers listed as anti-pattern
+
+### Changed
+
+- **Edge functions SKILL.md** — updated project structure to show `deno.json` per function, expanded new function checklist with `deno.json` and `config.toml` steps, added Dependencies & Deployment reference link
+- **edge_functions.md** — updated folder structure, shared utilities setup, and code examples to use `@supabase/server` import
+- **with_supabase.md** — implementation section now references `@supabase/server` npm package and `deno.json` setup
+- **api_key_migration.md** — updated migration table, shared utilities reference, and code examples to reflect `@supabase/server` package
+
 ## [0.11.0] - 2026-03-23
 
 ### Added

@@ -10,6 +10,7 @@ Edge Functions handle everything that needs to talk to the outside world — web
 ## IMPORTANT!
 
 - Every edge function uses the `withSupabase` wrapper. No exceptions.
+- Every edge function needs its own `deno.json` with pinned dependency versions — the global one is excluded during deployment.
 - Every edge function must have `verify_jwt = false` in `supabase/config.toml`:
 
 ```toml
@@ -23,16 +24,29 @@ This is required because the `withSupabase` wrapper handles auth itself. If `ver
 
 ### First edge function in a project?
 
-The `_shared/` utilities (`withSupabase.ts`, `responses.ts`, `types.ts`) should already exist in `supabase/functions/_shared/` — the CLI sets these up. If missing, run `npx @agentlink.sh/cli@latest`.
+The `_shared/` utilities (`responses.ts`, `types.ts`) should already exist in `supabase/functions/_shared/` — the CLI sets these up. If missing, run `npx @agentlink.sh/cli@latest`.
+
+The `withSupabase` wrapper comes from the `@supabase/server` npm package, resolved via per-function `deno.json` import maps.
 
 ### Creating a new function
 
-1. **Create the function directory** — `supabase/functions/my-function/index.ts`
-2. **Choose the `allow` type** — who can call this function? (see Selection Guide below)
-3. **Write the handler** using `withSupabase`:
+1. **Create the function directory** — `supabase/functions/my-function/`
+2. **Add `deno.json`** with pinned dependency versions:
+   ```jsonc
+   // supabase/functions/my-function/deno.json
+   {
+     "imports": {
+       "@supabase/server": "npm:@supabase/server@0.1.0-alpha.1",
+       "@supabase/supabase-js": "npm:@supabase/supabase-js@2"
+     }
+   }
+   ```
+   Always pin versions — exact for pre-release (`@0.1.0-alpha.1`), major for stable (`@2`). Never use unversioned specifiers.
+3. **Choose the `allow` type** — who can call this function? (see Selection Guide below)
+4. **Write `index.ts`** using `withSupabase`:
 
 ```typescript
-import { withSupabase } from "../_shared/withSupabase.ts";
+import { withSupabase } from "@supabase/server";
 import { jsonResponse, errorResponse } from "../_shared/responses.ts";
 
 Deno.serve(
@@ -50,7 +64,13 @@ Deno.serve(
 );
 ```
 
-5. **Test** — Local: `supabase functions serve` / Cloud: `supabase functions deploy`
+5. **Add to `config.toml`**:
+   ```toml
+   [functions.my-function]
+   enabled = true
+   verify_jwt = false
+   ```
+6. **Test** — Local: `supabase functions serve` / Deploy: `npx supabase functions deploy --use-api`
 
 ---
 
@@ -95,18 +115,20 @@ supabase secrets set SB_SECRET_KEY=sb_secret_...
 ```
 supabase/functions/
 ├── _shared/                    # Shared utilities (NOT deployed)
-│   ├── withSupabase.ts         # Context wrapper
 │   ├── responses.ts            # Response helpers
 │   └── types.ts                # Shared types
 ├── _feature-name/              # Feature-specific shared modules (NOT deployed)
 │   └── helpers.ts
 ├── my-function/
-│   └── index.ts
-└── another-function/
-    └── index.ts
+│   ├── index.ts
+│   └── deno.json               # Per-function dependency map (REQUIRED)
+├── another-function/
+│   ├── index.ts
+│   └── deno.json
+└── deno.json                   # Global — local dev fallback only
 ```
 
-Folders prefixed with `_` are shared modules — they are not deployed as edge functions.
+Folders prefixed with `_` are shared modules — they are not deployed as edge functions. Every deployed function needs its own `deno.json` with its dependencies mapped — the global `deno.json` is excluded during deployment.
 
 ---
 
@@ -115,5 +137,6 @@ Folders prefixed with `_` are shared modules — they are not deployed as edge f
 Load these as needed:
 
 - **[🔧 withSupabase Wrapper](./references/with_supabase.md)** — Full wrapper API: allow types, dual-auth, clients, anti-patterns, context reference
+- **[📦 Dependencies & Deployment](./references/dependencies.md)** — Per-function `deno.json`, import maps, bare specifiers, sub-path mapping, version pinning, `--use-api` deployment
 - **[📁 Edge Function Patterns](./references/edge_functions.md)** — Folder structure details, response helpers, feature-specific modules
 - **[🔑 API Key Migration](./references/api_key_migration.md)** — Migrate from legacy anon/service_role keys to new publishable/secret keys

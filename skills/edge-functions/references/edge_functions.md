@@ -20,24 +20,30 @@ Every Edge Function uses the `withSupabase` wrapper. **See [withSupabase Referen
 
 ```
 supabase/functions/
-├── _shared/                    # Global shared utilities
-│   ├── withSupabase.ts         # Context wrapper (core utility)
+├── _shared/                    # Global shared utilities (NOT deployed)
 │   ├── responses.ts            # Response helpers
 │   └── types.ts                # Shared TypeScript types
-├── _feature-name/              # Feature-specific shared modules
+├── _feature-name/              # Feature-specific shared modules (NOT deployed)
 │   ├── someHelper.ts           # Shared logic for this feature
 │   └── types.ts                # Feature-specific types
 ├── my-function/                # An edge function
-│   └── index.ts
-└── another-function/
-    └── index.ts
+│   ├── index.ts
+│   └── deno.json               # Per-function dependency map (REQUIRED)
+├── another-function/
+│   ├── index.ts
+│   └── deno.json
+└── deno.json                   # Global — local dev fallback only
 ```
 
 Folders prefixed with `_` are shared modules and are NOT deployed as edge functions. Use `_shared/` for global utilities and `_feature-name/` for logic shared across related functions.
 
+**Every deployed function needs its own `deno.json`** with its npm dependencies. The global `deno.json` is excluded during `--use-api` deployment. See [Dependencies & Deployment](./dependencies.md) for full details on import maps, bare specifiers, sub-path mapping, and deployment.
+
 ### Setting Up Shared Utilities
 
-**When creating the first edge function for a project**, check if `supabase/functions/_shared/withSupabase.ts` exists. If not, tell the user to run `npx @agentlink.sh/cli@latest` to set up the shared utilities.
+**When creating the first edge function for a project**, check if `supabase/functions/_shared/responses.ts` exists. If not, tell the user to run `npx @agentlink.sh/cli@latest` to set up the shared utilities.
+
+The `withSupabase` wrapper comes from the `@supabase/server` npm package — it's declared in each function's `deno.json`, not as a local file.
 
 ---
 
@@ -104,6 +110,9 @@ IMPORTANT: The `withSupabase` wrapper already handles `OPTIONS` preflight reques
 Always wrap handler logic in a try-catch. Without it, thrown exceptions (e.g., from `req.json()`, external API calls) crash the function with a raw 500 and no structured response.
 
 ```typescript
+import { withSupabase } from "@supabase/server";
+import { jsonResponse, errorResponse } from "../_shared/responses.ts";
+
 Deno.serve(
   withSupabase({ allow: "user" }, async (req, ctx) => {
     try {
@@ -189,7 +198,7 @@ For logic shared across related functions, use a `_feature-name/` directory:
 
 ```typescript
 // supabase/functions/generate-summary/index.ts
-import { withSupabase } from "../_shared/withSupabase.ts";
+import { withSupabase } from "@supabase/server";
 import { jsonResponse, errorResponse } from "../_shared/responses.ts";
 import { buildPrompt } from "../_ai/prompts.ts";
 import { callOpenAI } from "../_ai/openai.ts";
