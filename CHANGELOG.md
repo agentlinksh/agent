@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-03-25
+
 ### Added
 
 - **Routing reference** — new `references/routing.md` covering TanStack Router file-based routing, router setup, conventions, auth-protected layout routes, route decomposition, navigation config, and search params
