@@ -81,7 +81,7 @@ const supabase = createServerClient(
 
 ## Calling RPCs
 
-All data access goes through `supabase.rpc()`. Tables are not exposed via the Data API. For type-safe calls with real return types (instead of `Json`), use `typedRpc()` — see the next section.
+All data access goes through `.rpc()` — never `.from()`. The `public` schema is not exposed via the Data API, so `.from()` cannot reach tables. This is a universal rule across all code (frontend, edge functions, webhooks, etc.), not just the client. For type-safe calls with real return types (instead of `Json`), use `typedRpc()` — see the next section.
 
 ### Basic pattern
 

@@ -208,6 +208,22 @@ This is **required** for `public` and `private` (they don't send a Supabase JWT)
 
 ## Anti-Patterns
 
+### Using `.from()` instead of `.rpc()`
+
+```typescript
+// ❌ WRONG — .from() cannot reach tables (public schema is not exposed)
+const { data } = await ctx.client.from("charts").select("*");
+
+// ❌ ALSO WRONG — even adminClient.from() targets the exposed schema, which has no tables
+const { data } = await ctx.adminClient.from("charts").select("*");
+
+// ✅ CORRECT — .rpc() calls functions in the api schema
+const { data } = await ctx.client.rpc("chart_list");
+const { data } = await ctx.adminClient.rpc("chart_admin_cleanup");
+```
+
+All data access goes through `.rpc()` — in edge functions, frontend, and everywhere else. The `api` schema exposes only functions, never tables.
+
 ### Creating clients manually
 
 ```typescript

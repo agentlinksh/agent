@@ -1,6 +1,6 @@
 # RPC Patterns
 
-Complete patterns for building client-facing functions in the `api` schema.
+Complete patterns for building data access functions in the `api` schema.
 
 ## Contents
 - CRUD Templates (create, get, list, update, delete)

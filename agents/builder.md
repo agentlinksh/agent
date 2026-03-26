@@ -158,23 +158,23 @@ When users ask about deploying, point them to these commands. The agent always w
 
 ### RPC-First → `rpc` skill
 
-Business logic lives in Postgres functions exposed as RPCs. The `public` schema is **not** exposed via the Data API — all client-facing operations go through functions in a dedicated `api` schema:
+Business logic lives in Postgres functions exposed as RPCs. The `public` schema is **not** exposed via the Data API — **all** data operations go through functions in a dedicated `api` schema. This applies everywhere: frontend components, edge functions, webhooks, cron jobs, server-side code — no exceptions.
 
 ```
 api schema (exposed to Data API)
-└── Functions only — the client's entire surface area
+└── Functions only — the entire data access surface
     ├── chart_create()          ← agent builds these
     ├── chart_get_by_id()
     ├── tenant_select()         ← scaffolded by CLI
     └── profile_get()           ← scaffolded by CLI
 
-public schema (NOT exposed — invisible to REST API)
+public schema (NOT exposed — invisible to REST/Data API)
 ├── Tables — profiles, tenants, memberships, invitations (scaffolded), charts, ... (agent builds)
 ├── _auth_* functions — RLS policy helpers (_auth_tenant.sql scaffolded, _auth_{entity}.sql agent builds)
 └── _internal_admin_* functions — vault, edge function calls, set_updated_at (scaffolded)
 ```
 
-`supabase.from('charts').select()` literally doesn't work — the table isn't exposed. All data access goes through `supabase.rpc()`.
+`supabase.from('charts').select()` literally doesn't work — the table isn't exposed. Even with a service role key, `.from()` targets the exposed schema (`api`), which has no tables. **All data access goes through `.rpc()` — always.**
 
 ### Edge Functions for Externals → `edge-functions` skill
 
@@ -238,7 +238,7 @@ Every schema has one job. Put things in the right place.
 
 | Schema       | Purpose             | Contains                                                                                       |
 | ------------ | ------------------- | ---------------------------------------------------------------------------------------------- |
-| `api`        | Exposed to Data API | RPC functions only — the client's entire surface area. Use `rpc` skill.                        |
+| `api`        | Exposed to Data API | RPC functions only — the entire data access surface for all code. Use `rpc` skill.             |
 | `public`     | NOT exposed         | Tables, RLS policies, `_auth_*` and `_internal_admin_*` functions. Use `database` and `auth` skills. |
 | `extensions` | Postgres extensions | All extensions (`pg_cron`, `pgmq`, `pgcrypto`, etc.). Always `WITH SCHEMA extensions`.         |
 
@@ -252,17 +252,27 @@ CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
 
 Load the `database` skill for schema file conventions, naming, and setup.
 
-### Client-side: never direct table access
+### Never use `.from()` — all data goes through `.rpc()`
+
+`.from()` queries tables via the Data API, but only the `api` schema is exposed — and `api` has no tables, only functions. This means `.from()` will always fail or return nothing, regardless of whether you use a publishable key or a service role key. **This applies to all code** — frontend, edge functions, webhooks, cron handlers, server routes.
 
 ```typescript
-// ❌ WRONG
+// ❌ WRONG — .from() cannot reach tables in the public schema
 const { data } = await supabase.from("charts").select("*");
+
+// ❌ ALSO WRONG — service role key doesn't change which schema is exposed
+const admin = createClient(url, secretKey, { db: { schema: "public" } });
+const { data } = await admin.from("charts").select("*");
 
 // ✅ CORRECT
 const { data } = await supabase.rpc("chart_create", { p_name: "My Chart" });
+
+// ✅ CORRECT — within withSupabase context
+const { data } = await ctx.client.rpc("chart_get_by_id", { p_chart_id: id });
+const { data } = await ctx.adminClient.rpc("chart_admin_cleanup");
 ```
 
-Load the `frontend` skill for client setup, RPC calls, and auth state.
+Load the `rpc` skill for function patterns. Load the `frontend` skill for client setup and auth state.
 
 ### Security context: SECURITY INVOKER by default
 

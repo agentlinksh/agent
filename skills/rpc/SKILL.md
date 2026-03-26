@@ -1,23 +1,31 @@
 ---
 name: rpc
-description: RPC-first data access for Supabase. Use when the task involves creating, modifying, or debugging database functions (RPCs), writing CRUD operations, implementing pagination, search, filtering, batch operations, or any data access logic. Also use when the task mentions business logic functions, input validation in functions, error handling in RPCs, or returning data from the database. Activate whenever the task involves writing SQL functions that clients call via supabase.rpc().
+description: RPC-first data access for Supabase. Use when the task involves creating, modifying, or debugging database functions (RPCs), writing CRUD operations, implementing pagination, search, filtering, batch operations, or any data access logic. Also use when the task mentions business logic functions, input validation in functions, error handling in RPCs, or returning data from the database. Activate whenever the task involves writing SQL functions called via supabase.rpc().
 ---
 
 # RPC-First Data Access
 
-Every client operation is a function in the `api` schema. No direct table queries. No views. The `api` schema is the only schema exposed via the Supabase Data API — tables in `public` are invisible to clients.
+**Every data operation is a function in the `api` schema.** No `.from()`. No direct table queries. No views. The `api` schema is the only schema exposed via the Supabase Data API — tables in `public` are invisible. This applies to all code: frontend components, edge functions, webhooks, cron jobs, server routes — no exceptions.
 
 ```typescript
-// ❌ Impossible — public schema is not exposed
+// ❌ WRONG — .from() cannot reach tables (public schema is not exposed)
 const { data } = await supabase.from("charts").select("*");
 
-// ✅ The only way — calls api.chart_get_by_user()
+// ❌ ALSO WRONG — even with service role key, .from() won't reach public tables
+const admin = createClient(url, secretKey, { db: { schema: "public" } });
+const { data } = await admin.from("charts").select("*");
+
+// ✅ CORRECT
 const { data } = await supabase.rpc("chart_get_by_user");
+
+// ✅ CORRECT — within withSupabase context
+const { data } = await ctx.client.rpc("chart_get_by_user");
+const { data } = await ctx.adminClient.rpc("chart_admin_cleanup");
 ```
 
 ## Function Anatomy
 
-Every client-facing function follows this structure:
+Every `api` schema function follows this structure:
 
 ```sql
 CREATE OR REPLACE FUNCTION api.chart_get_by_id(p_chart_id uuid)
@@ -47,7 +55,7 @@ $$;
 ```
 
 **Key rules:**
-- **`api.` schema** — all client-facing functions live here
+- **`api.` schema** — all data access functions live here
 - **`SECURITY INVOKER`** — RLS applies automatically, no manual `auth.uid()` filtering
 - **`SET search_path = ''`** — prevents search path injection
 - **Fully qualified names** — `public.charts`, `public._auth_*`, `public._internal_admin_*` — never bare names
@@ -56,7 +64,7 @@ $$;
 
 ## Security Context
 
-**Default: SECURITY INVOKER** — the function runs as the calling user. RLS policies filter data automatically. This is correct for all client-facing functions.
+**Default: SECURITY INVOKER** — the function runs as the calling user. RLS policies filter data automatically. This is correct for all standard data access functions.
 
 **Exception: SECURITY DEFINER** — only for:
 - `_auth_*` functions called by RLS policies (they need to query the table they protect)
@@ -64,7 +72,7 @@ $$;
 - Always add: `-- SECURITY DEFINER: required because ...`
 
 ```sql
--- This goes in public schema, NOT api — it's not client-facing
+-- This goes in public schema, NOT api — it's an internal helper, not a data access function
 CREATE OR REPLACE FUNCTION public._auth_chart_can_read(p_chart_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql

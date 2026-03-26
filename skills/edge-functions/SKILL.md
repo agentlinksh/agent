@@ -9,6 +9,7 @@ Edge Functions handle everything that needs to talk to the outside world — web
 
 ## IMPORTANT!
 
+- **All database access uses `.rpc()` — never `.from()`.** The `public` schema is not exposed via the Data API, so `.from()` cannot reach tables. Use `ctx.client.rpc()` or `ctx.adminClient.rpc()` to call functions in the `api` schema.
 - Every edge function uses the `withSupabase` wrapper. No exceptions.
 - Every edge function needs its own `deno.json` with pinned dependency versions — the global one is excluded during deployment.
 - Every edge function must have `verify_jwt = false` in `supabase/config.toml`:

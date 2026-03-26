@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **RPC-first rule is now universal** — reframed from "client-side: never direct table access" to "never use `.from()` — all data goes through `.rpc()`" across builder agent, RPC skill, edge-functions skill, and frontend skill. Applies to all code (frontend, edge functions, webhooks, cron jobs), not just client-side.
+- **`.from()` anti-pattern added to edge-functions** — new first bullet in IMPORTANT rules and new anti-pattern in `with_supabase.md` showing why `.from()` fails even with service role keys
+- **"client-facing" language removed** — replaced with "data access" throughout RPC skill and rpc_patterns reference to prevent the agent from reasoning that server-side code is exempt
+
 ## [0.12.0] - 2026-03-25
 
 ### Added
