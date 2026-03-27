@@ -100,20 +100,49 @@ Flag: `npx @agentlink.sh/cli@latest --debug`
 
 Writes detailed log to `agentlink-debug.log` in the project directory. Use when scaffold or `--force-update` fails with an unclear error. Tell the user to share the log contents if you can't resolve the issue.
 
-### When a managed resource has issues
+### Managed resources and `@agentlink` annotations
 
-SQL files in `supabase/schemas/` contain `-- @agentlink <name>` annotations marking resources managed by the CLI (functions, extensions, queues). When you encounter an issue with one of these annotated resources:
+SQL files in `supabase/schemas/` contain `-- @agentlink <name>` annotations marking resources managed by the CLI (functions, extensions, queues, tables). When `--force-update` runs, it updates every function/block that still has its `@agentlink` annotation. A single file can contain multiple annotated blocks — each is managed independently.
+
+When you encounter an issue with a managed resource:
 
 1. **Check for updates:** `npx @agentlink.sh/cli@latest check` — a newer CLI version may ship a fix
 2. **Update resources:** `npx @agentlink.sh/cli@latest --force-update` — re-applies the latest managed versions
 3. **Verify:** `npx @agentlink.sh/cli@latest check` — confirm `ready: true`
 
-If the issue persists after updating, **create a project-scoped override:**
+#### Customizing a managed function (project-scoped override)
 
-- Write the corrected function to the appropriate schema file in `supabase/schemas/` (e.g., `public/_internal_admin.sql`)
-- Remove the `-- @agentlink` annotation block from your version — this makes it project-owned so `--force-update` won't overwrite it
-- Apply via `psql` and generate a migration
-- Let the user know you've created a project-specific override and why, so they're aware it diverges from the managed version
+When the app needs a managed function to behave differently (e.g., `_internal_admin_handle_new_user` must also create an accounts row), override it:
+
+1. Open the schema file (e.g., `supabase/schemas/public/_internal_admin.sql`)
+2. Find the function you need to customize
+3. **Remove only that function's `-- @agentlink` annotation block** (the `-- @agentlink`, `-- @type`, `-- @summary`, `-- @description`, etc. comment lines above the `CREATE` statement). Keep the function itself.
+4. Modify the function body as needed
+5. Apply: `npx @agentlink.sh/cli@latest db apply`
+6. Tell the user you've created a project-specific override and why
+
+**How it works:** `--force-update` merges at the function level. It compares each `@agentlink`-annotated block in the template against the on-disk file. Functions that still have the annotation get updated from the template. Functions where the annotation was removed are left untouched — your custom version is preserved. Other functions in the same file continue to receive CLI updates normally.
+
+**Rules:**
+- Keep the same function name and schema — the CLI matches by `CREATE OR REPLACE FUNCTION <schema>.<name>`
+- Never add `-- @agentlink` annotations — these are CLI-only metadata
+- One file can have a mix of managed and overridden functions
+- If you remove ALL annotations from a file, the entire file becomes project-owned and `--force-update` skips it completely
+
+**Example** — overriding `_internal_admin_handle_new_user` while keeping `_internal_admin_get_secret` managed:
+
+```sql
+-- @agentlink _internal_admin_get_secret        ← still managed, CLI will update this
+-- @type function
+-- ...
+CREATE OR REPLACE FUNCTION public._internal_admin_get_secret(secret_name text)
+...$$;
+
+-- Customized for this project: also creates an accounts row on signup.
+-- (no @agentlink annotation = project-owned, CLI won't touch this)
+CREATE OR REPLACE FUNCTION public._internal_admin_handle_new_user()
+...$$;
+```
 
 Use `npx @agentlink.sh/cli@latest info <name>` to read the annotation docs for any managed resource — it shows the type, description, signature, and related components.
 
@@ -310,4 +339,4 @@ Load the `rpc` skill for CRUD templates, pagination, and error handling.
 
 ### `@agentlink` annotations
 
-Never add `-- @agentlink` annotations to SQL files. These are CLI metadata for scaffolded resources — the `info` command parses them. Add regular SQL comments instead.
+Never add `-- @agentlink` annotations to SQL files. These are CLI metadata for scaffolded resources — the `info` command parses them, and `--force-update` uses them to decide which functions to update. Add regular SQL comments instead. To override a managed function, remove its existing annotation block — see "Customizing a managed function" above.

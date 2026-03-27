@@ -47,7 +47,7 @@ Files are grouped by Postgres schema (`public/`, `api/`) with entity-centric fil
 
 ### `@agentlink` Annotations
 
-Never add `-- @agentlink` comment annotations to SQL files. These are reserved metadata for CLI-scaffolded resources only — the CLI's `info` command parses them. The agent can add regular SQL comments but must never use the `-- @agentlink` prefix.
+Never add `-- @agentlink` comment annotations to SQL files. These are reserved CLI metadata — the `info` command parses them, and `--force-update` uses them to decide which functions to update vs. preserve.
 
 ```sql
 -- @agentlink my_function    ← WRONG, agent must not add this
@@ -59,6 +59,8 @@ Regular comments are fine:
 -- Creates a new chart for the authenticated user
 CREATE OR REPLACE FUNCTION api.chart_create(...)
 ```
+
+**To customize a managed function**, remove its `@agentlink` annotation block (the `-- @agentlink`, `-- @type`, `-- @summary`, etc. comment lines) but keep the `CREATE OR REPLACE FUNCTION` statement. This makes that specific function project-owned — `--force-update` will skip it while still updating other annotated functions in the same file. Keep the same function name and schema. See the builder agent's "Customizing a managed function" section for a full example.
 
 **Which schema for what:**
 - `api.*` — Client-facing RPCs (the only things exposed via the Data API)
