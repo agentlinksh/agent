@@ -4,6 +4,9 @@
 
 ### Added
 
+- **Auth lock race condition guidance** — documented the dual-path race between `onAuthStateChange` and `getSession()` that causes "Lock broken by another request" errors in post-auth action flows (e.g., invitation acceptance)
+  - `frontend/SKILL.md` — new warning after the existing deadlock section with guard flag pattern
+  - `frontend/references/auth_ui.md` — new "Post-auth action" section with ❌ wrong / ✅ correct examples showing guard flag, non-async callback, and deferred `refreshSession()`
 - **`config apply` command** — added to builder agent tools reference table
 - **Function-level `@agentlink` override system** — documented how `--force-update` merges at the individual function level; agent can remove the `@agentlink` annotation block and modify a function body while the CLI preserves that override and still updates other annotated functions in the same file
   - `builder.md` — rewritten "managed resources" section with step-by-step override instructions, concrete example, and merge mechanics

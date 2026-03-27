@@ -411,6 +411,34 @@ supabase.auth.onAuthStateChange((event, session) => {
 });
 ```
 
+**Critical: dual-path race when combining `onAuthStateChange` + `getSession()`.** Auth callback pages that read a URL hash fragment (e.g., `#access_token=...`) have two paths that resolve concurrently: `onAuthStateChange` fires when the fragment is consumed, and `getSession()` resolves once the session is established. If both paths trigger the same post-auth action (e.g., `invitation_accept` RPC + `refreshSession()`), three operations compete for the auth lock and produce "Lock broken by another request" errors.
+
+Use a guard flag so only the first path to resolve executes the action:
+
+```typescript
+let handled = false;
+
+async function handlePostAuthAction() {
+  if (handled) return;
+  handled = true;
+  await supabase.rpc("invitation_accept", { p_token: token });
+  // Defer refreshSession — do NOT call it in the same tick as the initial auth flow
+  setTimeout(() => supabase.auth.refreshSession(), 0);
+}
+
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === "SIGNED_IN" && session) {
+    handlePostAuthAction(); // non-async — do not hold the auth lock
+  }
+});
+
+supabase.auth.getSession().then(({ data: { session } }) => {
+  if (session) handlePostAuthAction();
+});
+```
+
+> **Load [Auth UI Patterns](./references/auth_ui.md) for the full post-auth action pattern (invitation acceptance example).**
+
 ### Refresh session after claim changes
 
 When JWT claims change (e.g., after `api.tenant_select()`), the client must refresh to get the new token:

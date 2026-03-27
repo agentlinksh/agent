@@ -9,6 +9,7 @@ Client-side authentication UI — sign-in/sign-up forms, OAuth redirect flows, a
 - Sign-In / Sign-Up Forms
 - OAuth Redirect Flow
 - Protected Routes
+- Post-Auth Actions (e.g., invitation acceptance)
 
 ---
 
@@ -92,6 +93,130 @@ function AuthCallbackPage() {
   return <div>Completing sign in...</div>;
 }
 ```
+
+### Post-auth action (e.g., invitation acceptance)
+
+When the auth callback must perform an action after sign-in (RPC call, session refresh), two concurrent paths race for the auth lock:
+
+1. `onAuthStateChange` fires `SIGNED_IN` when the URL hash fragment is consumed
+2. `getSession()` resolves once the session is established
+
+If both trigger the same async work, three operations compete for the lock and produce **"Lock broken by another request"** errors.
+
+Rules:
+- **Guard flag** — `let handled = false` ensures only the first path executes
+- **Non-async `onAuthStateChange` callback** — do not `await` inside the callback (holds the lock)
+- **Defer `refreshSession()`** — call it in a `setTimeout` after the RPC succeeds, never in the same tick
+
+❌ Wrong — both paths fire, async callback holds the lock:
+
+```typescript
+// src/routes/accept-invitation.tsx — BROKEN
+function AcceptInvitationPage() {
+  const navigate = useNavigate();
+  const { token } = Route.useSearch();
+
+  useEffect(() => {
+    async function acceptInvitation() {
+      await supabase.rpc("invitation_accept", { p_token: token });
+      await supabase.auth.refreshSession(); // competes for auth lock
+      navigate({ to: "/", replace: true });
+    }
+
+    // Path 1: fires on SIGNED_IN
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event) => {
+        if (event === "SIGNED_IN") {
+          await acceptInvitation(); // holds the auth lock
+        }
+      }
+    );
+
+    // Path 2: fires when session resolves
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) acceptInvitation(); // races with Path 1
+    });
+
+    return () => subscription.unsubscribe();
+  }, [token, navigate]);
+
+  return <div>Accepting invitation...</div>;
+}
+```
+
+✅ Correct — guard flag, non-async callback, deferred refresh:
+
+```typescript
+// src/routes/accept-invitation.tsx
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { z } from "zod";
+
+const searchSchema = z.object({
+  token: z.string().uuid(),
+});
+
+export const Route = createFileRoute("/accept-invitation")({
+  validateSearch: searchSchema,
+  component: AcceptInvitationPage,
+});
+
+function AcceptInvitationPage() {
+  const navigate = useNavigate();
+  const { token } = Route.useSearch();
+
+  useEffect(() => {
+    let handled = false;
+
+    async function acceptInvitation() {
+      if (handled) return;
+      handled = true;
+
+      const { error } = await supabase.rpc("invitation_accept", {
+        p_token: token,
+      });
+
+      if (error) {
+        console.error("Failed to accept invitation:", error.message);
+        navigate({ to: "/login", replace: true });
+        return;
+      }
+
+      // Defer refreshSession — let the auth flow settle first
+      setTimeout(async () => {
+        await supabase.auth.refreshSession();
+        navigate({ to: "/", replace: true });
+      }, 0);
+    }
+
+    // Path 1: auth state listener
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") {
+        // Non-async — do not hold the auth lock
+        acceptInvitation();
+      }
+    });
+
+    // Path 2: session may already exist
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) acceptInvitation();
+    });
+
+    return () => subscription.unsubscribe();
+  }, [token, navigate]);
+
+  return <div>Accepting invitation...</div>;
+}
+```
+
+Key differences from the simple auth callback above:
+- `let handled = false` guard prevents double execution
+- `onAuthStateChange` callback is **not** `async` — calls `acceptInvitation()` without `await`
+- `refreshSession()` runs inside `setTimeout` so it does not compete for the auth lock
+- Error handling navigates to `/login` as fallback
 
 ---
 
