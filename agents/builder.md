@@ -139,6 +139,9 @@ Use `npx @agentlink.sh/cli@latest info <name>` to read the annotation docs for a
 | Set DB password | N/A | `npx @agentlink.sh/cli@latest db password "value"` |
 | Fix DB URL | N/A | `npx @agentlink.sh/cli@latest db url --fix` |
 | Rebuild migrations | `npx @agentlink.sh/cli@latest db rebuild` | `npx @agentlink.sh/cli@latest db rebuild` |
+| Re-apply config (all) | `npx @agentlink.sh/cli@latest config apply` | `npx @agentlink.sh/cli@latest config apply` |
+| Re-apply auth config | N/A (restart Supabase) | `npx @agentlink.sh/cli@latest config apply --auth` |
+| Re-apply PostgREST config | N/A (restart Supabase) | `npx @agentlink.sh/cli@latest config apply --rest` |
 
 ### Deployment
 
