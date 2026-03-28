@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-03-27
+
 ### Added
 
 - **Auth lock race condition guidance** — documented the dual-path race between `onAuthStateChange` and `getSession()` that causes "Lock broken by another request" errors in post-auth action flows (e.g., invitation acceptance)
