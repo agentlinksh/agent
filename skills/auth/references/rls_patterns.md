@@ -24,15 +24,18 @@ RLS has two clause types:
 
 ```sql
 -- USING: "which rows can I read?"
-CREATE POLICY "read own" ON public.charts FOR SELECT
+DROP POLICY IF EXISTS users_read_own_charts ON public.charts;
+CREATE POLICY users_read_own_charts ON public.charts FOR SELECT
 USING (user_id = auth.uid());
 
 -- WITH CHECK: "can I insert this row?"
-CREATE POLICY "insert own" ON public.charts FOR INSERT
+DROP POLICY IF EXISTS users_insert_own_charts ON public.charts;
+CREATE POLICY users_insert_own_charts ON public.charts FOR INSERT
 WITH CHECK (user_id = auth.uid());
 
 -- UPDATE needs both: USING filters which rows you can target, WITH CHECK validates the result
-CREATE POLICY "update own" ON public.charts FOR UPDATE
+DROP POLICY IF EXISTS users_update_own_charts ON public.charts;
+CREATE POLICY users_update_own_charts ON public.charts FOR UPDATE
 USING (user_id = auth.uid())
 WITH CHECK (user_id = auth.uid());
 ```
@@ -47,20 +50,24 @@ The simplest pattern. Each row has a `user_id` column, each user sees only their
 
 ```sql
 -- Four policies cover all CRUD operations
-CREATE POLICY "Users can read own charts"
+DROP POLICY IF EXISTS users_read_own_charts ON public.charts;
+CREATE POLICY users_read_own_charts
 ON public.charts FOR SELECT
 USING (user_id = auth.uid());
 
-CREATE POLICY "Users can insert own charts"
+DROP POLICY IF EXISTS users_insert_own_charts ON public.charts;
+CREATE POLICY users_insert_own_charts
 ON public.charts FOR INSERT
 WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can update own charts"
+DROP POLICY IF EXISTS users_update_own_charts ON public.charts;
+CREATE POLICY users_update_own_charts
 ON public.charts FOR UPDATE
 USING (user_id = auth.uid())
 WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can delete own charts"
+DROP POLICY IF EXISTS users_delete_own_charts ON public.charts;
+CREATE POLICY users_delete_own_charts
 ON public.charts FOR DELETE
 USING (user_id = auth.uid());
 ```
@@ -85,13 +92,15 @@ Supabase stores custom claims in `app_metadata`. The tenant ID is set during log
 ### Tenant-scoped policies
 
 ```sql
-CREATE POLICY "Tenant members can read projects"
+DROP POLICY IF EXISTS members_read_projects ON public.projects;
+CREATE POLICY members_read_projects
 ON public.projects FOR SELECT
 USING (
   tenant_id = (auth.jwt() -> 'app_metadata' ->> 'tenant_id')::uuid
 );
 
-CREATE POLICY "Tenant members can insert projects"
+DROP POLICY IF EXISTS members_insert_projects ON public.projects;
+CREATE POLICY members_insert_projects
 ON public.projects FOR INSERT
 WITH CHECK (
   tenant_id = (auth.jwt() -> 'app_metadata' ->> 'tenant_id')::uuid
@@ -115,7 +124,8 @@ $$;
 Then policies become:
 
 ```sql
-CREATE POLICY "Tenant members can read projects"
+DROP POLICY IF EXISTS members_read_projects ON public.projects;
+CREATE POLICY members_read_projects
 ON public.projects FOR SELECT
 USING (tenant_id = public._auth_tenant_id());
 ```
@@ -169,12 +179,14 @@ $$;
 
 ```sql
 -- Viewers and above can read
-CREATE POLICY "Tenant members can read projects"
+DROP POLICY IF EXISTS members_read_projects ON public.projects;
+CREATE POLICY members_read_projects
 ON public.projects FOR SELECT
 USING (tenant_id = public._auth_tenant_id());
 
 -- Members and above can write
-CREATE POLICY "Members can insert projects"
+DROP POLICY IF EXISTS members_insert_projects ON public.projects;
+CREATE POLICY members_insert_projects
 ON public.projects FOR INSERT
 WITH CHECK (
   tenant_id = public._auth_tenant_id()
@@ -182,7 +194,8 @@ WITH CHECK (
 );
 
 -- Admins and above can delete
-CREATE POLICY "Admins can delete projects"
+DROP POLICY IF EXISTS admins_delete_projects ON public.projects;
+CREATE POLICY admins_delete_projects
 ON public.projects FOR DELETE
 USING (
   tenant_id = public._auth_tenant_id()
@@ -261,27 +274,32 @@ $$;
 
 ```sql
 -- Tenants: members can see their own tenants
-CREATE POLICY "Members can read own tenant" ON public.tenants
+DROP POLICY IF EXISTS members_read_own_tenant ON public.tenants;
+CREATE POLICY members_read_own_tenant ON public.tenants
   FOR SELECT TO authenticated
   USING (public._auth_is_tenant_member(id));
 
 -- Tenants: owners can update
-CREATE POLICY "Owners can update tenant" ON public.tenants
+DROP POLICY IF EXISTS owners_update_tenant ON public.tenants;
+CREATE POLICY owners_update_tenant ON public.tenants
   FOR UPDATE TO authenticated
   USING (public._auth_is_tenant_member(id) AND public._auth_has_role('owner'));
 
 -- Memberships: members can see other members of their tenant
-CREATE POLICY "Members can read memberships in their tenant" ON public.memberships
+DROP POLICY IF EXISTS members_read_memberships ON public.memberships;
+CREATE POLICY members_read_memberships ON public.memberships
   FOR SELECT TO authenticated
   USING (tenant_id = public._auth_tenant_id());
 
 -- Memberships: admins can add members
-CREATE POLICY "Admins can insert memberships" ON public.memberships
+DROP POLICY IF EXISTS admins_insert_memberships ON public.memberships;
+CREATE POLICY admins_insert_memberships ON public.memberships
   FOR INSERT TO authenticated
   WITH CHECK (tenant_id = public._auth_tenant_id() AND public._auth_has_role('admin'));
 
 -- Memberships: admins can remove members (but not themselves)
-CREATE POLICY "Admins can delete memberships" ON public.memberships
+DROP POLICY IF EXISTS admins_delete_memberships ON public.memberships;
+CREATE POLICY admins_delete_memberships ON public.memberships
   FOR DELETE TO authenticated
   USING (
     tenant_id = public._auth_tenant_id()
@@ -449,11 +467,13 @@ $$;
 ### Public read, authenticated write
 
 ```sql
-CREATE POLICY "Anyone can read published posts"
+DROP POLICY IF EXISTS anon_read_published_posts ON public.posts;
+CREATE POLICY anon_read_published_posts
 ON public.posts FOR SELECT
 USING (status = 'published');
 
-CREATE POLICY "Authors can insert posts"
+DROP POLICY IF EXISTS authors_insert_posts ON public.posts;
+CREATE POLICY authors_insert_posts
 ON public.posts FOR INSERT
 WITH CHECK (user_id = auth.uid());
 ```

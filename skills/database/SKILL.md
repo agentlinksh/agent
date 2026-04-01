@@ -103,7 +103,7 @@ The database is **never** reset unless the user explicitly requests it.
 | Internal admin | `public._internal_admin_{name}` | `public._internal_admin_get_secret` |
 | Auth hooks | `public._hook_{hook_name}` | `public._hook_before_user_created` |
 | Indexes | `idx_{table}_{columns}` | `idx_charts_user_id` |
-| Policies | descriptive English | `"Users can read own charts"` |
+| Policies | `{role}_{action}_{table}` | `users_read_own_charts` |
 | Triggers | `trg_{table}_{event}` | `trg_charts_updated_at` |
 
 > **📋 Load [Naming Conventions](./references/naming_conventions.md) for the full reference.**

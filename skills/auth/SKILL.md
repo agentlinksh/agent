@@ -189,19 +189,23 @@ When the table has a `user_id` column and each row belongs to one user:
 
 ```sql
 -- supabase/schemas/public/charts.sql
-CREATE POLICY "Users can read own charts"
+DROP POLICY IF EXISTS users_read_own_charts ON public.charts;
+CREATE POLICY users_read_own_charts
 ON public.charts FOR SELECT
 USING (user_id = auth.uid());
 
-CREATE POLICY "Users can insert own charts"
+DROP POLICY IF EXISTS users_insert_own_charts ON public.charts;
+CREATE POLICY users_insert_own_charts
 ON public.charts FOR INSERT
 WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can update own charts"
+DROP POLICY IF EXISTS users_update_own_charts ON public.charts;
+CREATE POLICY users_update_own_charts
 ON public.charts FOR UPDATE
 USING (user_id = auth.uid());
 
-CREATE POLICY "Users can delete own charts"
+DROP POLICY IF EXISTS users_delete_own_charts ON public.charts;
+CREATE POLICY users_delete_own_charts
 ON public.charts FOR DELETE
 USING (user_id = auth.uid());
 ```
@@ -230,7 +234,8 @@ END;
 $$;
 
 -- Policy uses the function
-CREATE POLICY "Users can read own or public charts"
+DROP POLICY IF EXISTS users_read_own_or_public_charts ON public.charts;
+CREATE POLICY users_read_own_or_public_charts
 ON public.charts FOR SELECT
 USING (public._auth_chart_can_read(id));
 ```

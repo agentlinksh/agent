@@ -3,6 +3,7 @@
 -- =============================================================================
 -- These are templates — replace table names and column names with your own.
 -- Copy the relevant patterns into the entity file: supabase/schemas/public/<table>.sql
+-- Policy names use snake_case: {role}_{action}_{table}
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -11,20 +12,24 @@
 -- Use when: each row belongs to one user, no team/tenant concept
 -- Requires: table has a `user_id` column
 
-CREATE POLICY "Users can read own <table>"
+DROP POLICY IF EXISTS users_read_own_<table> ON public.<table>;
+CREATE POLICY users_read_own_<table>
 ON public.<table> FOR SELECT
 USING (user_id = auth.uid());
 
-CREATE POLICY "Users can insert own <table>"
+DROP POLICY IF EXISTS users_insert_own_<table> ON public.<table>;
+CREATE POLICY users_insert_own_<table>
 ON public.<table> FOR INSERT
 WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can update own <table>"
+DROP POLICY IF EXISTS users_update_own_<table> ON public.<table>;
+CREATE POLICY users_update_own_<table>
 ON public.<table> FOR UPDATE
 USING (user_id = auth.uid())
 WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can delete own <table>"
+DROP POLICY IF EXISTS users_delete_own_<table> ON public.<table>;
+CREATE POLICY users_delete_own_<table>
 ON public.<table> FOR DELETE
 USING (user_id = auth.uid());
 
@@ -35,23 +40,27 @@ USING (user_id = auth.uid());
 -- Use when: data belongs to a tenant/org, all members can see it
 -- Requires: table has a `tenant_id` column, _auth_tenant_id() function exists
 
-CREATE POLICY "Tenant members can read <table>"
+DROP POLICY IF EXISTS members_read_<table> ON public.<table>;
+CREATE POLICY members_read_<table>
 ON public.<table> FOR SELECT
 USING (tenant_id = public._auth_tenant_id());
 
-CREATE POLICY "Tenant members can insert <table>"
+DROP POLICY IF EXISTS members_insert_<table> ON public.<table>;
+CREATE POLICY members_insert_<table>
 ON public.<table> FOR INSERT
 WITH CHECK (
   tenant_id = public._auth_tenant_id()
   AND public._auth_has_role('member')
 );
 
-CREATE POLICY "Tenant members can update <table>"
+DROP POLICY IF EXISTS members_update_<table> ON public.<table>;
+CREATE POLICY members_update_<table>
 ON public.<table> FOR UPDATE
 USING (tenant_id = public._auth_tenant_id() AND public._auth_has_role('member'))
 WITH CHECK (tenant_id = public._auth_tenant_id());
 
-CREATE POLICY "Tenant admins can delete <table>"
+DROP POLICY IF EXISTS admins_delete_<table> ON public.<table>;
+CREATE POLICY admins_delete_<table>
 ON public.<table> FOR DELETE
 USING (tenant_id = public._auth_tenant_id() AND public._auth_has_role('admin'));
 
@@ -61,19 +70,23 @@ USING (tenant_id = public._auth_tenant_id() AND public._auth_has_role('admin'));
 -- ---------------------------------------------------------------------------
 -- Use when: content is publicly visible but only authors can create/edit
 
-CREATE POLICY "Anyone can read published <table>"
+DROP POLICY IF EXISTS anon_read_published_<table> ON public.<table>;
+CREATE POLICY anon_read_published_<table>
 ON public.<table> FOR SELECT
 USING (status = 'published');
 
-CREATE POLICY "Authors can read own drafts"
+DROP POLICY IF EXISTS authors_read_own_drafts ON public.<table>;
+CREATE POLICY authors_read_own_drafts
 ON public.<table> FOR SELECT
 USING (user_id = auth.uid());
 
-CREATE POLICY "Authenticated users can insert <table>"
+DROP POLICY IF EXISTS users_insert_<table> ON public.<table>;
+CREATE POLICY users_insert_<table>
 ON public.<table> FOR INSERT
 WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Authors can update own <table>"
+DROP POLICY IF EXISTS authors_update_own_<table> ON public.<table>;
+CREATE POLICY authors_update_own_<table>
 ON public.<table> FOR UPDATE
 USING (user_id = auth.uid());
 
@@ -84,18 +97,22 @@ USING (user_id = auth.uid());
 -- Use when: rows are private by default but can be shared publicly
 -- Requires: table has `user_id` and `is_public` boolean columns
 
-CREATE POLICY "Users can read own or public <table>"
+DROP POLICY IF EXISTS users_read_own_or_public_<table> ON public.<table>;
+CREATE POLICY users_read_own_or_public_<table>
 ON public.<table> FOR SELECT
 USING (user_id = auth.uid() OR is_public = true);
 
-CREATE POLICY "Users can insert own <table>"
+DROP POLICY IF EXISTS users_insert_own_<table> ON public.<table>;
+CREATE POLICY users_insert_own_<table>
 ON public.<table> FOR INSERT
 WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can update own <table>"
+DROP POLICY IF EXISTS users_update_own_<table> ON public.<table>;
+CREATE POLICY users_update_own_<table>
 ON public.<table> FOR UPDATE
 USING (user_id = auth.uid());
 
-CREATE POLICY "Users can delete own <table>"
+DROP POLICY IF EXISTS users_delete_own_<table> ON public.<table>;
+CREATE POLICY users_delete_own_<table>
 ON public.<table> FOR DELETE
 USING (user_id = auth.uid());

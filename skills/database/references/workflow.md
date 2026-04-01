@@ -141,19 +141,23 @@ CREATE INDEX IF NOT EXISTS idx_readings_user_id ON public.readings(user_id);
 CREATE INDEX IF NOT EXISTS idx_readings_created_at ON public.readings(created_at DESC);
 
 -- RLS policies
-CREATE POLICY "Users can read own or public readings"
+DROP POLICY IF EXISTS users_read_own_or_public_readings ON public.readings;
+CREATE POLICY users_read_own_or_public_readings
 ON public.readings FOR SELECT
 USING (public._auth_reading_can_read(id));
 
-CREATE POLICY "Users can insert own readings"
+DROP POLICY IF EXISTS users_insert_own_readings ON public.readings;
+CREATE POLICY users_insert_own_readings
 ON public.readings FOR INSERT
 WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can update own readings"
+DROP POLICY IF EXISTS users_update_own_readings ON public.readings;
+CREATE POLICY users_update_own_readings
 ON public.readings FOR UPDATE
 USING (public._auth_reading_is_owner(id));
 
-CREATE POLICY "Users can delete own readings"
+DROP POLICY IF EXISTS users_delete_own_readings ON public.readings;
+CREATE POLICY users_delete_own_readings
 ON public.readings FOR DELETE
 USING (public._auth_reading_is_owner(id));
 ```
