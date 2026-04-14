@@ -249,16 +249,15 @@ The `deploy` command:
 ```bash
 # Interactive
 npx @agentlink.sh/cli@latest env add prod                # Connect a production cloud project
-npx @agentlink.sh/cli@latest env add dev                 # Add a cloud dev environment
+npx @agentlink.sh/cli@latest env add dev                 # Add a cloud dev environment (prompts to relink if it exists)
 npx @agentlink.sh/cli@latest env use local               # Switch to local Docker for dev
 npx @agentlink.sh/cli@latest env use dev                 # Switch to cloud dev
 npx @agentlink.sh/cli@latest env list                    # Show all environments
-npx @agentlink.sh/cli@latest env relink dev              # Relink dev to a new project (keeps migrations)
 npx @agentlink.sh/cli@latest env remove staging          # Remove an environment
 
 # Non-interactive (for agents / CI)
 npx @agentlink.sh/cli@latest env add prod --project-ref <ref> --non-interactive
-npx @agentlink.sh/cli@latest env relink dev --project-ref <ref> --non-interactive
+npx @agentlink.sh/cli@latest env add dev  --project-ref <ref> --non-interactive   # Relinks `dev` if it already exists
 npx @agentlink.sh/cli@latest env remove staging -y
 ```
 
@@ -266,7 +265,9 @@ The initial project link can also be done during scaffold with the `--link` flag
 
 `env use` switches the active dev environment by rewriting the managed section of `.env.local`. User-added variables are preserved across switches. `env use prod` is blocked — use `deploy` instead.
 
-`env relink` connects an environment to a new Supabase project while keeping all existing migrations intact. Used when the cloud project was deleted, the DB URL is wrong, or you need to point at a different project. It updates credentials, `.env.local`, links, pushes all migrations, and deploys edge functions.
+`env add` handles both new environments and relinking existing ones. When the environment already exists, it connects the env to a different Supabase project while keeping all existing migrations intact — used when the cloud project was deleted, the DB URL is wrong, or you need to point at a different project. It updates credentials, `.env.local`, links, pushes all migrations, and deploys edge functions. In non-interactive mode, pass `--project-ref <ref>` to confirm the relink.
+
+> `env relink` still works as a deprecated alias and prints a warning. Prefer `env add`.
 
 ---
 

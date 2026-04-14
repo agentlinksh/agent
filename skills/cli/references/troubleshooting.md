@@ -157,9 +157,9 @@ npx supabase migration repair --status reverted <version1> <version2> ...
 
 **Fix:**
 ```bash
-npx @agentlink.sh/cli@latest env relink dev
+npx @agentlink.sh/cli@latest env add dev
 ```
-Connects to a new (or existing) Supabase project, updates all credentials and `.env.local`, links, pushes existing migrations, and deploys edge functions. Migrations are preserved.
+Re-running `env add` on an existing environment prompts to relink it. Connects to a new (or existing) Supabase project, updates all credentials and `.env.local`, links, pushes existing migrations, and deploys edge functions. Migrations are preserved.
 
 ---
 
@@ -258,6 +258,6 @@ rm supabase/migrations/<version>_name.sql
 | DB URL is wrong / connection fails | `npx @agentlink.sh/cli@latest db url --fix` |
 | Duplicate migration files | `npx @agentlink.sh/cli@latest db rebuild` |
 | `db push` says remote versions not found | `npx @agentlink.sh/cli@latest db rebuild` |
-| Cloud project deleted / need new project | `npx @agentlink.sh/cli@latest env relink dev` |
+| Cloud project deleted / need new project | `npx @agentlink.sh/cli@latest env add dev` (prompts to relink) |
 | Broken migration state on new project | `npx @agentlink.sh/cli@latest db rebuild` |
 | DB password was reset in dashboard | `npx @agentlink.sh/cli@latest db password "newpass"` |

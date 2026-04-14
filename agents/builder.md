@@ -164,7 +164,7 @@ Use `npx @agentlink.sh/cli@latest info <name>` to read the annotation docs for a
 | List environments | `npx @agentlink.sh/cli@latest env list` | `npx @agentlink.sh/cli@latest env list` |
 | Add environment | `npx @agentlink.sh/cli@latest env add prod` | `npx @agentlink.sh/cli@latest env add prod` |
 | Remove environment | `npx @agentlink.sh/cli@latest env remove staging -y` | `npx @agentlink.sh/cli@latest env remove staging -y` |
-| Relink to new project | `npx @agentlink.sh/cli@latest env relink dev` | `npx @agentlink.sh/cli@latest env relink dev` |
+| Relink to new project | `npx @agentlink.sh/cli@latest env add dev` (prompts to relink) | `npx @agentlink.sh/cli@latest env add dev` |
 | Set DB password | N/A | `npx @agentlink.sh/cli@latest db password "value"` |
 | Fix DB URL | N/A | `npx @agentlink.sh/cli@latest db url --fix` |
 | Rebuild migrations | `npx @agentlink.sh/cli@latest db rebuild` | `npx @agentlink.sh/cli@latest db rebuild` |
