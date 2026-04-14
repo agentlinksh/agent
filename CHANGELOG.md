@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-04-14
+
 ### Changed
 
 - **CLI npm package renamed from `@agentlink.sh/cli` to `create-agentlink`** — all command references across the builder agent, CLI skill, database/auth/edge-functions/frontend skills, and their references have been updated from `npx @agentlink.sh/cli@latest` to `npx create-agentlink@latest`. The bin name (`agentlink`) is unchanged, so all subcommands work exactly as before.
