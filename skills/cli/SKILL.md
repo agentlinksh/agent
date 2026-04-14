@@ -5,7 +5,7 @@ description: AgentLink CLI usage, project scaffolding, updates, and migration ma
 
 # CLI
 
-The `@agentlink.sh/cli` CLI scaffolds new Supabase projects and updates existing ones. It handles infrastructure setup, template files, database configuration, and migration generation.
+The `create-agentlink` CLI scaffolds new Supabase projects and updates existing ones. It handles infrastructure setup, template files, database configuration, and migration generation.
 
 ---
 
@@ -14,8 +14,8 @@ The `@agentlink.sh/cli` CLI scaffolds new Supabase projects and updates existing
 ### Scaffold a new project
 
 ```bash
-npx @agentlink.sh/cli@latest <name>       # interactive — handles login + project creation
-npx @agentlink.sh/cli@latest .            # scaffold in current directory
+npx create-agentlink@latest <name>       # interactive — handles login + project creation
+npx create-agentlink@latest .            # scaffold in current directory
 ```
 
 Creates template files, config, schema files, frontend (React + Vite by default, Next.js with `--nextjs`), configures Claude Code, and installs the plugin + companion skills.
@@ -23,7 +23,7 @@ Creates template files, config, schema files, frontend (React + Vite by default,
 ### Scaffold with `--link` (non-interactive)
 
 ```bash
-npx @agentlink.sh/cli@latest <name> --link \
+npx create-agentlink@latest <name> --link \
   --project-ref <ref> \
   --db-url "<db_url>" \
   --api-url "<api_url>" \
@@ -36,7 +36,7 @@ Scaffolds files + connects to an existing Supabase project + applies the full SQ
 ### Scaffold in an existing project
 
 ```bash
-cd my-project && npx @agentlink.sh/cli@latest .
+cd my-project && npx create-agentlink@latest .
 ```
 
 Detects the existing directory and integrates AgentLink into it. Requires a clean git working tree.
@@ -44,7 +44,7 @@ Detects the existing directory and integrates AgentLink into it. Requires a clea
 ### Update an existing project
 
 ```bash
-npx @agentlink.sh/cli@latest --force-update
+npx create-agentlink@latest --force-update
 ```
 
 Re-applies template files, patches `config.toml`, runs SQL setup, and regenerates migrations if schemas changed. Use after a CLI version upgrade or when `check` reports missing components.
@@ -52,8 +52,8 @@ Re-applies template files, patches `config.toml`, runs SQL setup, and regenerate
 ### Diagnose
 
 ```bash
-npx @agentlink.sh/cli@latest check            # Check default environment
-npx @agentlink.sh/cli@latest check --env dev  # Check specific environment
+npx create-agentlink@latest check            # Check default environment
+npx create-agentlink@latest check --env dev  # Check specific environment
 ```
 
 Outputs JSON with `ready`, `supabase_running`, `database` (extensions, queues, functions, secrets, api_schema), and `files`. Read-only — reports problems but does not fix them.
@@ -61,8 +61,8 @@ Outputs JSON with `ready`, `supabase_running`, `database` (extensions, queues, f
 ### Component info
 
 ```bash
-npx @agentlink.sh/cli@latest info          # Summary list
-npx @agentlink.sh/cli@latest info <name>   # Detail for one component
+npx create-agentlink@latest info          # Summary list
+npx create-agentlink@latest info <name>   # Detail for one component
 ```
 
 Shows type, summary, description, signature, and related components. Use to understand what a missing component does.
@@ -96,39 +96,39 @@ Shows type, summary, description, signature, and related components. Use to unde
 ### Apply schemas
 
 ```bash
-npx @agentlink.sh/cli@latest db apply                    # Auto-detects DB from .env.local
-npx @agentlink.sh/cli@latest db apply --env dev          # Target specific environment
-npx @agentlink.sh/cli@latest db apply --db-url "postgresql://..."  # Explicit DB URL
+npx create-agentlink@latest db apply                    # Auto-detects DB from .env.local
+npx create-agentlink@latest db apply --env dev          # Target specific environment
+npx create-agentlink@latest db apply --db-url "postgresql://..."  # Explicit DB URL
 ```
 
 ### Run SQL
 
 ```bash
-npx @agentlink.sh/cli@latest db sql "SELECT * FROM public.profiles LIMIT 5"
-npx @agentlink.sh/cli@latest db sql "SELECT 1" --env dev
-npx @agentlink.sh/cli@latest db sql "SELECT 1" --json    # JSON output (cloud only)
+npx create-agentlink@latest db sql "SELECT * FROM public.profiles LIMIT 5"
+npx create-agentlink@latest db sql "SELECT 1" --env dev
+npx create-agentlink@latest db sql "SELECT 1" --json    # JSON output (cloud only)
 ```
 
 ### Generate types
 
 ```bash
-npx @agentlink.sh/cli@latest db types                    # Auto-detects output path
-npx @agentlink.sh/cli@latest db types --env dev          # From specific environment
-npx @agentlink.sh/cli@latest db types --output types/db.ts  # Custom output path
+npx create-agentlink@latest db types                    # Auto-detects output path
+npx create-agentlink@latest db types --env dev          # From specific environment
+npx create-agentlink@latest db types --output types/db.ts  # Custom output path
 ```
 
 ### Generate migration
 
 ```bash
-npx @agentlink.sh/cli@latest db migrate add_charts       # From default DB
-npx @agentlink.sh/cli@latest db migrate add_charts --env dev
+npx create-agentlink@latest db migrate add_charts       # From default DB
+npx create-agentlink@latest db migrate add_charts --env dev
 ```
 
 ### Set database password
 
 ```bash
-npx @agentlink.sh/cli@latest db password                  # Interactive: shows dashboard reset link + prompts
-npx @agentlink.sh/cli@latest db password "newpassword"    # Non-interactive: sets directly
+npx create-agentlink@latest db password                  # Interactive: shows dashboard reset link + prompts
+npx create-agentlink@latest db password "newpassword"    # Non-interactive: sets directly
 ```
 
 Shows or sets the database password for the active cloud project. The password is stored in `~/.config/agentlink/credentials.json` (per project ref). Use when the DB password was reset in the Supabase dashboard.
@@ -140,7 +140,7 @@ Shows or sets the database password for the active cloud project. The password i
 ### Database rebuild
 
 ```bash
-npx @agentlink.sh/cli@latest db rebuild
+npx create-agentlink@latest db rebuild
 ```
 
 Nukes all migration files, re-applies schemas via pgdelta, and regenerates a single clean migration file. For recovering from broken migration state on new projects (duplicate migrations, failed pushes, timestamp conflicts). Does not recreate the Supabase project — only resets the migration layer.
@@ -148,8 +148,8 @@ Nukes all migration files, re-applies schemas via pgdelta, and regenerates a sin
 ### Database URL check
 
 ```bash
-npx @agentlink.sh/cli@latest db url        # Show correct pooler URL from Supabase API
-npx @agentlink.sh/cli@latest db url --fix  # Also update .env.local if it's wrong
+npx create-agentlink@latest db url        # Show correct pooler URL from Supabase API
+npx create-agentlink@latest db url --fix  # Also update .env.local if it's wrong
 ```
 
 Fetches the real pooler DB URL from the Supabase Management API (Supavisor, IPv4-compatible, transaction mode) and compares it with the value stored in `.env.local`. Use when `db apply` or `db sql` fails with connection errors.
@@ -166,10 +166,10 @@ Fetches the real pooler DB URL from the Supabase Management API (Supavisor, IPv4
 
 ```bash
 # Development — the agent's loop
-npx @agentlink.sh/cli@latest db apply
+npx create-agentlink@latest db apply
 
 # Deployment — when the user asks for a migration
-npx @agentlink.sh/cli@latest db migrate descriptive_name
+npx create-agentlink@latest db migrate descriptive_name
 
 # Cloud deployment — push after generating
 npx supabase db push
@@ -227,12 +227,12 @@ No interactive prompts. All connection details come from `--link` flags.
 ### Deploy to production
 
 ```bash
-npx @agentlink.sh/cli@latest deploy                          # Interactive — diff, validate, push
-npx @agentlink.sh/cli@latest deploy --dry-run                # Preview without applying
-npx @agentlink.sh/cli@latest deploy --env staging            # Target a specific environment
-npx @agentlink.sh/cli@latest deploy --ci                     # Non-interactive for CI/CD
-npx @agentlink.sh/cli@latest deploy --ci --allow-warnings    # CI: proceed past data-risk warnings
-npx @agentlink.sh/cli@latest deploy --setup-ci               # Scaffold GitHub Actions workflow
+npx create-agentlink@latest deploy                          # Interactive — diff, validate, push
+npx create-agentlink@latest deploy --dry-run                # Preview without applying
+npx create-agentlink@latest deploy --env staging            # Target a specific environment
+npx create-agentlink@latest deploy --ci                     # Non-interactive for CI/CD
+npx create-agentlink@latest deploy --ci --allow-warnings    # CI: proceed past data-risk warnings
+npx create-agentlink@latest deploy --setup-ci               # Scaffold GitHub Actions workflow
 ```
 
 The `deploy` command:
@@ -248,17 +248,17 @@ The `deploy` command:
 
 ```bash
 # Interactive
-npx @agentlink.sh/cli@latest env add prod                # Connect a production cloud project
-npx @agentlink.sh/cli@latest env add dev                 # Add a cloud dev environment (prompts to relink if it exists)
-npx @agentlink.sh/cli@latest env use local               # Switch to local Docker for dev
-npx @agentlink.sh/cli@latest env use dev                 # Switch to cloud dev
-npx @agentlink.sh/cli@latest env list                    # Show all environments
-npx @agentlink.sh/cli@latest env remove staging          # Remove an environment
+npx create-agentlink@latest env add prod                # Connect a production cloud project
+npx create-agentlink@latest env add dev                 # Add a cloud dev environment (prompts to relink if it exists)
+npx create-agentlink@latest env use local               # Switch to local Docker for dev
+npx create-agentlink@latest env use dev                 # Switch to cloud dev
+npx create-agentlink@latest env list                    # Show all environments
+npx create-agentlink@latest env remove staging          # Remove an environment
 
 # Non-interactive (for agents / CI)
-npx @agentlink.sh/cli@latest env add prod --project-ref <ref> --non-interactive
-npx @agentlink.sh/cli@latest env add dev  --project-ref <ref> --non-interactive   # Relinks `dev` if it already exists
-npx @agentlink.sh/cli@latest env remove staging -y
+npx create-agentlink@latest env add prod --project-ref <ref> --non-interactive
+npx create-agentlink@latest env add dev  --project-ref <ref> --non-interactive   # Relinks `dev` if it already exists
+npx create-agentlink@latest env remove staging -y
 ```
 
 The initial project link can also be done during scaffold with the `--link` flag — see "Scaffold with `--link`" above.

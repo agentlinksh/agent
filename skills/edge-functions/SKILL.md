@@ -25,7 +25,7 @@ This is required because the `withSupabase` wrapper handles auth itself. If `ver
 
 ### First edge function in a project?
 
-The `_shared/` utilities (`responses.ts`) should already exist in `supabase/functions/_shared/` — the CLI sets these up. If missing, run `npx @agentlink.sh/cli@latest`.
+The `_shared/` utilities (`responses.ts`) should already exist in `supabase/functions/_shared/` — the CLI sets these up. If missing, run `npx create-agentlink@latest`.
 
 The `withSupabase` wrapper comes from the `@supabase/server` npm package, resolved via per-function `deno.json` import maps.
 

@@ -33,7 +33,7 @@ Client → api.chart_get_by_id()  → RLS filters by user → returns only allow
 
 ### Profile creation on sign-up
 
-> **Scaffolded by the CLI.** Profiles, tenants, and memberships are created automatically on signup via the `_internal_admin_handle_new_user` trigger. The SQL below is for reference — it already exists in your project. If missing, run `npx @agentlink.sh/cli@latest --force-update` — do not recreate manually.
+> **Scaffolded by the CLI.** Profiles, tenants, and memberships are created automatically on signup via the `_internal_admin_handle_new_user` trigger. The SQL below is for reference — it already exists in your project. If missing, run `npx create-agentlink@latest --force-update` — do not recreate manually.
 
 User metadata belongs in a `profiles` table, not in Supabase Auth metadata. The trigger creates the profile and — for direct signups — a default tenant, owner membership, and JWT claims. Invited users (created via `generateLink({ type: 'invite' })`) only get a profile; `invitation_accept()` handles adding them to the inviter's tenant:
 
@@ -116,7 +116,7 @@ CREATE TRIGGER trg_auth_users_new_user
   EXECUTE FUNCTION public._internal_admin_handle_new_user();
 ```
 
-**Need to customize signup logic?** If the app requires additional work on signup (e.g., creating rows in app-specific tables, syncing with external services), override `_internal_admin_handle_new_user` by removing its `-- @agentlink` annotation block in `supabase/schemas/public/_internal_admin.sql` and modifying the function body. Keep the same function name. The other managed functions in that file (`_internal_admin_get_secret`, `set_updated_at`, etc.) remain annotated and will continue receiving CLI updates. Apply with `npx @agentlink.sh/cli@latest db apply`.
+**Need to customize signup logic?** If the app requires additional work on signup (e.g., creating rows in app-specific tables, syncing with external services), override `_internal_admin_handle_new_user` by removing its `-- @agentlink` annotation block in `supabase/schemas/public/_internal_admin.sql` and modifying the function body. Keep the same function name. The other managed functions in that file (`_internal_admin_get_secret`, `set_updated_at`, etc.) remain annotated and will continue receiving CLI updates. Apply with `npx create-agentlink@latest db apply`.
 
 ### Profile RPCs
 
@@ -248,7 +248,7 @@ USING (public._auth_chart_can_read(id));
 
 ## Multi-Tenancy Overview
 
-> **Scaffolded by the CLI.** The CLI scaffolds a complete multi-tenancy model including tables, RLS policies, auth helpers, and API RPCs. If missing, run `npx @agentlink.sh/cli@latest --force-update` — do not recreate manually. The agent builds application-specific tables on top of this foundation.
+> **Scaffolded by the CLI.** The CLI scaffolds a complete multi-tenancy model including tables, RLS policies, auth helpers, and API RPCs. If missing, run `npx create-agentlink@latest --force-update` — do not recreate manually. The agent builds application-specific tables on top of this foundation.
 
 The multi-tenancy model uses three tables (all in `supabase/schemas/public/multitenancy.sql`):
 

@@ -12,7 +12,7 @@
 [db.migrations]
 schema_paths = ["./schemas/_schemas.sql", "./schemas/_extensions.sql", "./schemas/**/*.sql"]
 ```
-Also verify `supabase/schemas/_schemas.sql` exists on disk. Run `npx @agentlink.sh/cli@latest --force-update` to regenerate it.
+Also verify `supabase/schemas/_schemas.sql` exists on disk. Run `npx create-agentlink@latest --force-update` to regenerate it.
 
 ---
 
@@ -91,7 +91,7 @@ npx supabase migration repair <new_version> --status applied --local
 **Fix:** Fix the ordering (see above) or merge the problematic migrations. As a last resort, delete all migrations and regenerate:
 ```bash
 rm supabase/migrations/*.sql
-npx @agentlink.sh/cli@latest --force-update
+npx create-agentlink@latest --force-update
 ```
 
 ---
@@ -104,7 +104,7 @@ npx @agentlink.sh/cli@latest --force-update
 
 **Fix:**
 ```bash
-npx @agentlink.sh/cli@latest db url --fix
+npx create-agentlink@latest db url --fix
 ```
 Fetches the correct pooler URL from the Supabase Management API and updates `.env.local`. Run `db url` (without `--fix`) first to see the current vs expected URL.
 
@@ -128,7 +128,7 @@ Fetches the correct pooler URL from the Supabase Management API and updates `.en
 
 **Fix:**
 ```bash
-npx @agentlink.sh/cli@latest db rebuild
+npx create-agentlink@latest db rebuild
 ```
 Deletes all migration files, re-applies schemas, and regenerates a single clean migration.
 
@@ -143,7 +143,7 @@ Deletes all migration files, re-applies schemas, and regenerates a single clean 
 **Fix:**
 ```bash
 # Option 1: Full rebuild (easiest for new projects)
-npx @agentlink.sh/cli@latest db rebuild
+npx create-agentlink@latest db rebuild
 
 # Option 2: Manual repair (if you need to keep specific migrations)
 npx supabase migration repair --status reverted <version1> <version2> ...
@@ -157,7 +157,7 @@ npx supabase migration repair --status reverted <version1> <version2> ...
 
 **Fix:**
 ```bash
-npx @agentlink.sh/cli@latest env add dev
+npx create-agentlink@latest env add dev
 ```
 Re-running `env add` on an existing environment prompts to relink it. Connects to a new (or existing) Supabase project, updates all credentials and `.env.local`, links, pushes existing migrations, and deploys edge functions. Migrations are preserved.
 
@@ -248,16 +248,16 @@ rm supabase/migrations/<version>_name.sql
 
 | Situation | Action |
 |-----------|--------|
-| Missing component reported by `check` | `npx @agentlink.sh/cli@latest --force-update` |
+| Missing component reported by `check` | `npx create-agentlink@latest --force-update` |
 | `db diff` produces wrong output | Edit the generated migration file manually |
 | Need a migration for auth schema changes | Write migration file + repair |
 | Timestamp collision | Rename file + repair |
-| CLI version is outdated | `npx @agentlink.sh/cli@latest --force-update` |
+| CLI version is outdated | `npx create-agentlink@latest --force-update` |
 | Migration references non-existent object | Fix ordering or merge migrations |
 | Need to undo a migration | `repair --status reverted` + delete file |
-| DB URL is wrong / connection fails | `npx @agentlink.sh/cli@latest db url --fix` |
-| Duplicate migration files | `npx @agentlink.sh/cli@latest db rebuild` |
-| `db push` says remote versions not found | `npx @agentlink.sh/cli@latest db rebuild` |
-| Cloud project deleted / need new project | `npx @agentlink.sh/cli@latest env add dev` (prompts to relink) |
-| Broken migration state on new project | `npx @agentlink.sh/cli@latest db rebuild` |
-| DB password was reset in dashboard | `npx @agentlink.sh/cli@latest db password "newpass"` |
+| DB URL is wrong / connection fails | `npx create-agentlink@latest db url --fix` |
+| Duplicate migration files | `npx create-agentlink@latest db rebuild` |
+| `db push` says remote versions not found | `npx create-agentlink@latest db rebuild` |
+| Cloud project deleted / need new project | `npx create-agentlink@latest env add dev` (prompts to relink) |
+| Broken migration state on new project | `npx create-agentlink@latest db rebuild` |
+| DB password was reset in dashboard | `npx create-agentlink@latest db password "newpass"` |

@@ -27,7 +27,7 @@ const supabase = createClient(
 
 ### Next.js / SSR (`--nextjs`)
 
-For projects created with `npx @agentlink.sh/cli@latest <name> --nextjs`. Uses `@supabase/ssr` for cookie-based session management:
+For projects created with `npx create-agentlink@latest <name> --nextjs`. Uses `@supabase/ssr` for cookie-based session management:
 
 ```typescript
 import { createBrowserClient } from "@supabase/ssr";
@@ -132,7 +132,7 @@ const { data, error } = await supabase.rpc("chart_list");
 Generate TypeScript types from your database schema:
 
 ```bash
-npx @agentlink.sh/cli@latest db types
+npx create-agentlink@latest db types
 ```
 
 This works in both local and cloud mode. Types are written to `src/types/database.types.ts` (Vite) or `types/database.types.ts` (Next.js). `db apply` auto-generates types, so you usually don't need to run this separately.
@@ -153,7 +153,7 @@ const supabase = createClient<Database>(
 const { data } = await supabase.rpc("chart_get_by_id", { p_chart_id: id });
 ```
 
-Types are regenerated automatically by `db apply`. To regenerate manually: `npx @agentlink.sh/cli@latest db types`.
+Types are regenerated automatically by `db apply`. To regenerate manually: `npx create-agentlink@latest db types`.
 
 ---
 

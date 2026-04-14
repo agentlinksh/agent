@@ -4,6 +4,7 @@
 
 ### Changed
 
+- **CLI npm package renamed from `@agentlink.sh/cli` to `create-agentlink`** — all command references across the builder agent, CLI skill, database/auth/edge-functions/frontend skills, and their references have been updated from `npx @agentlink.sh/cli@latest` to `npx create-agentlink@latest`. The bin name (`agentlink`) is unchanged, so all subcommands work exactly as before.
 - **CLI skill docs updated for new command tree** — the CLI in v0.16.0 reorganized Supabase-scoped commands under a new `sb` group and merged `env relink` into `env add`. All user-facing references in the CLI skill, builder agent tool table, and troubleshooting recipes now point to the new commands: `agentlink sb login`, `agentlink sb token show|set`, `agentlink frontend <name>`, and `agentlink env add <name>` (which now prompts to relink if the environment already exists).
 
 ## [0.15.0] - 2026-04-01
