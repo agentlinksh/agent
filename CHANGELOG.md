@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-04-16
+
 ### Added
 
 - **Auth grants guidance** — auth SKILL.md now explains that `USAGE` on the `api` schema is open to `anon + authenticated + service_role` so pages can resolve the schema, while `EXECUTE` is the real security boundary (default: `authenticated + service_role`; `anon` is explicit per-function opt-in).
