@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Auth grants guidance** — auth SKILL.md now explains that `USAGE` on the `api` schema is open to `anon + authenticated + service_role` so pages can resolve the schema, while `EXECUTE` is the real security boundary (default: `authenticated + service_role`; `anon` is explicit per-function opt-in).
+- **Post-signup JWT race documentation** — `_internal_admin_handle_new_user` writes `tenant_id` into `raw_app_meta_data` *after* Supabase issues the first JWT; documented two-part fix using `refreshSession()` after `signUp` plus `useTenantGuard` as a safety net.
+- **Tenancy UX rule** — backend is always multi-tenant; the UX decision is counting tenants. `tenants.length === 1` → no picker, default to `tenants[0]`.
+- **Per-section route gating convention** — frontend SKILL.md now makes the file-based gating convention explicit: `src/routes/*` public, `src/routes/_auth/*` gated. Drop a file in, done. Anti-patterns called out (`AuthGate` wrapper, `useState`/`useEffect` gating, globally gating a partially-gated app).
+- **`useTenantGuard` as shipped infrastructure** — scaffolded auth block rewritten to list `/login` route, public `index.tsx`, and `useTenantGuard` as already provided; agent **extends** rather than **builds from scratch**.
+- **Post-signup + `useTenantGuard` gate-on-ready pattern** — new subsection in frontend SKILL.md.
+- **`.from()` anti-pattern** — added at the end of Calling RPCs in frontend SKILL.md.
+
+### Fixed
+
+- **Frontend import paths and API accuracy** — `typedRpc` is imported from `@/lib/supabase` (not `@/lib/typed-rpc`); `RpcReturnMap` lives in `@/types/models`; `Database` type is imported from `@/types/database` (following the scaffold rename `database.types.ts` → `database.ts`); `Button` uses `disabled` (not `loading`) for pending state; navigation example points Dashboard at `/dashboard` (not `/`).
+
 ## [0.16.1] - 2026-04-16
 
 ### Fixed
