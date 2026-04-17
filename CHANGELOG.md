@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **RLS policy naming rule** — database skill's `naming_conventions.md` now codifies that RLS policies must be snake_case bare identifiers (`{role}_{action}_{scope}`), never quoted names with spaces. Includes a ❌ / ✅ example and explains why: `agentlink db apply` runs SQL through `pg-delta` / `pg-topo`, whose libpg_query deparser canonicalizes identifiers and silently drops surrounding quotes — so `DROP POLICY IF EXISTS "Members can read own tenant" …` reaches Postgres unquoted and fails with `42601: syntax error at or near "can"`.
+
 ## [0.17.0] - 2026-04-16
 
 ### Added

@@ -53,6 +53,21 @@ Consistent naming across all database objects.
 | Triggers | `trg_{table}_{event}` | `trg_charts_updated_at`, `trg_readings_audit` |
 | Check Constraints | `chk_{table}_{description}` | `chk_charts_valid_type` |
 | Unique Constraints | `uq_{table}_{column(s)}` | `uq_users_email` |
+| RLS Policies | `{role}_{action}_{scope}` — snake_case, **never quoted** | `users_read_own_charts`, `admins_delete_memberships` |
+
+### RLS Policies — never use quoted names
+
+Policy names must always be snake_case bare identifiers. Never wrap them in double quotes, never include spaces, mixed case, or reserved words.
+
+```sql
+-- ❌ NOT THIS — quoted name with spaces
+CREATE POLICY "Members can read own tenant" ON public.tenants ...
+
+-- ✅ THIS — snake_case bare identifier
+CREATE POLICY members_read_own_tenant ON public.tenants ...
+```
+
+**Why:** `agentlink db apply` uses `pg-delta` / `pg-topo`, which parses every SQL statement through libpg_query and re-emits it via `deparseSql`. The deparser canonicalizes identifiers and silently drops the surrounding quotes — so `DROP POLICY IF EXISTS "Members can read own tenant" ON …` reaches Postgres as `DROP POLICY IF EXISTS Members can read own tenant ON …` and fails with `42601: syntax error at or near "can"`. Quoted names with spaces are effectively unusable in schema files.
 
 ## Schema File Naming
 
