@@ -157,7 +157,10 @@ CREATE TRIGGER trg_auth_users_new_user
 >    `{ ready, error }` so queries can gate on `ready`.
 >
 > See the frontend skill's "Post-signup & the useTenantGuard hook"
-> section for the TS side.
+> section for the TS side. For the full client-side signup flow
+> (branching on `data.session`, email-confirmation pending state, error
+> mapping), see `frontend/references/auth_ui.md` → **Handling Supabase
+> Auth Responses**.
 
 **Need to customize signup logic?** If the app requires additional work on signup (e.g., creating rows in app-specific tables, syncing with external services), override `_internal_admin_handle_new_user` by removing its `-- @agentlink` annotation block in `supabase/schemas/public/_internal_admin.sql` and modifying the function body. Keep the same function name. The other managed functions in that file (`_internal_admin_get_secret`, `set_updated_at`, etc.) remain annotated and will continue receiving CLI updates. Apply with `npx create-agentlink@latest db apply`.
 

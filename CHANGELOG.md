@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- **"Handling Supabase Auth Responses" section in frontend `auth_ui.md`.** Documents the reliable `data.session === null` branch for email-confirmation-pending state (not `email_confirmed_at` — that field can be written asynchronously), the `refreshSession()`-after-signup rationale for the `_internal_admin_handle_new_user` JWT race, where confirmation is configured (local `config.toml` vs. cloud `mailer_autoconfirm`), the `formatAuthError` pattern shipped in the scaffold's `lib/auth-errors.ts`, and known Supabase quirks (`User already registered` on unconfirmed emails, `refreshSession()` deadlock inside `onAuthStateChange`).
+- **Pointer from auth `SKILL.md` to the new section.** The post-signup JWT race note now points at `frontend/references/auth_ui.md` → Handling Supabase Auth Responses for the client-side flow.
+
 ## [0.17.2] - 2026-04-20
 
 ### Added

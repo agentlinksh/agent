@@ -7,6 +7,7 @@ Client-side authentication UI — sign-in/sign-up forms, OAuth redirect flows, a
 ## Contents
 - Vite Auth Infrastructure
 - Sign-In / Sign-Up Forms
+- Handling Supabase Auth Responses
 - OAuth Redirect Flow
 - Protected Routes
 - Post-Auth Actions (e.g., invitation acceptance)
@@ -283,24 +284,30 @@ export function SignInForm() {
 
 ### Sign-up form
 
-Same pattern as sign-in, but use `supabase.auth.signUp()`:
+Use `supabase.auth.signUp()` and branch on `data.session`, not on `email_confirmed_at`:
 
 ```typescript
-const { data, error } = await supabase.auth.signUp({
-  email,
-  password,
-});
+const { data, error } = await supabase.auth.signUp({ email, password });
+if (error) throw error;
 
-if (error) {
-  setError(error.message);
+// Supabase returns a user but NO session when email confirmation is required.
+// This is the reliable check — `data.user.email_confirmed_at` may be populated
+// asynchronously and is not safe to race on.
+if (!data.session) {
+  // Show a "check your inbox" UI, DO NOT navigate into the app.
+  setPendingConfirmationEmail(email);
   return;
 }
 
-// If email confirmation is enabled, tell the user to check their inbox
-if (data.user && !data.user.email_confirmed_at) {
-  setMessage("Check your email for a confirmation link.");
-}
+// Session exists → refresh to pick up tenant_id claim (see note below).
+await supabase.auth.refreshSession();
+router.push("/dashboard");
 ```
+
+**Why refresh the session after signup?** The `_internal_admin_handle_new_user`
+trigger writes the default `tenant_id` into the JWT **after** Supabase issues
+the initial token. Without `refreshSession()`, every tenant-scoped RPC fails
+with `missing tenant_id` until the user reloads the page.
 
 ### Magic link (passwordless)
 
@@ -319,6 +326,80 @@ if (error) {
 
 setMessage("Check your email for a login link.");
 ```
+
+---
+
+## Handling Supabase Auth Responses
+
+Supabase's auth responses have sharp edges. Handle them explicitly so users
+don't get stranded on errors they can't understand or loop in confirmation
+dead-ends.
+
+### Email confirmation — branch on `data.session`, not on `email_confirmed_at`
+
+`supabase.auth.signUp()` returns `{ user, session }`. When email confirmation
+is required, `session` is `null`. Always check `data.session` — not
+`data.user.email_confirmed_at`, which can be written asynchronously.
+
+```typescript
+const { data, error } = await supabase.auth.signUp({ email, password });
+if (error) throw error;
+
+if (!data.session) {
+  // Confirmation required — show a "check your inbox" UI. Do NOT navigate,
+  // the user isn't signed in yet.
+  return showConfirmationPending(email);
+}
+
+// Session exists — refresh to pick up the tenant_id claim from the
+// `_internal_admin_handle_new_user` trigger, then continue into the app.
+await supabase.auth.refreshSession();
+router.push("/dashboard");
+```
+
+### Where is email confirmation configured?
+
+| Environment | Setting | Default in scaffold |
+| --- | --- | --- |
+| Local (`config.toml`) | `[auth.email].enable_confirmations` | `false` (dev) |
+| Cloud (Management API) | `mailer_autoconfirm` | `true` on initial scaffold (dev), `false` otherwise |
+
+The scaffold disables email confirmation on dev so the first sign-up lands in
+the app without SMTP. The `!data.session` branch is a safety net: it handles
+prod (where confirmation stays on) and any project where an admin re-enables it.
+
+### Map Supabase errors to friendly messages
+
+The scaffold ships `lib/auth-errors.ts` with `formatAuthError(err)`. It checks
+the stable `code` field first, falls back to message substrings. Use it at
+every auth call site instead of surfacing raw Supabase strings:
+
+```typescript
+import { formatAuthError } from "@/lib/auth-errors";
+
+try {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+} catch (err) {
+  setError(formatAuthError(err));  // "Wrong email or password." etc.
+}
+```
+
+Extend the helper when you add new flows (magic link, OAuth, password reset)
+— the map is just a `switch` on `err.code`.
+
+### Known auth response quirks
+
+- **`User already registered`** on sign-up with an existing *unconfirmed* email
+  is returned when "Confirm email" is on. It looks like a duplicate but the
+  user just never finished confirmation. Send them to resend.
+- **`Email not confirmed`** on sign-in means the session isn't issued yet.
+  Offer a "resend confirmation" action — don't ask for a different password.
+- **`Email rate limit exceeded`** fires after ~4 sign-ups from the same IP
+  within an hour. Show the rate-limit copy, not a generic error.
+- **`refreshSession()` deadlock**: never call it inside `onAuthStateChange`.
+  The SDK re-fires the event and hangs. Refresh after explicit user actions
+  (signup, invitation accept), not inside auth listeners.
 
 ---
 
