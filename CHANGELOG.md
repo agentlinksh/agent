@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-04-23
+
 ### Changed
 
 - **Skills sweep for the CLI restructure (top-level `deploy` → `env deploy`, `env use prod` now allowed).** Touches every skill that references CLI verbs:
