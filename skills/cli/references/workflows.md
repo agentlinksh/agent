@@ -47,7 +47,9 @@ npx create-agentlink@latest <name>
 
 The wizard prompts for Supabase login (browser OAuth), org selection, region.
 
-**Commands — user has credentials from Supabase connector MCP**
+**Commands — user pastes existing credentials (advanced)**
+
+User-driven only. Agents should use `--skip-env` above; never call MCP tools to fetch credentials themselves.
 
 ```bash
 npx create-agentlink@latest <name> --link \

@@ -27,38 +27,21 @@ Check `CLAUDE.md` in the project root for the project mode (**cloud** or **local
 
 ### New project setup
 
-Always scaffold a new Supabase cloud project via the AgentLink CLI. **Do not ask the user to pick between modes** (cloud vs local Docker, new vs existing project) — auto-detect and proceed. Local Docker and existing-project reuse are not default paths; only use them if the user explicitly requests them.
-
-Auto-detect by checking for Supabase connector MCP tools (e.g. `supabase_create_project`, `supabase_list_projects`):
-
-**MCP available** (Claude Desktop / Cowork / claude.ai integrations):
-
-1. Use the MCP tools to create a **new** Supabase project
-2. Retrieve connection details: project ref, DB URL, API URL, publishable key (anon), secret key (service role)
-3. Run the CLI with `--link` and all connection flags:
+Scaffold via the AgentLink CLI — never via the Supabase connector MCP. The agent has no browser for Supabase OAuth, so use `--skip-env`:
 
 ```bash
-npx create-agentlink@latest my-app --link \
-  --project-ref <ref> \
-  --db-url "<db_url>" \
-  --api-url "<api_url>" \
-  --publishable-key "<anon_key>" \
-  --secret-key "<service_role_key>"
+npx create-agentlink@latest <name> --skip-env
+# or, to scaffold into the current directory:
+npx create-agentlink@latest . --skip-env
 ```
 
-This scaffolds files, connects to the Supabase project, and applies the full SQL setup in one step — no interactive prompts needed.
+This writes all files, installs deps, configures Claude Code, and registers the plugin + companion skills — without touching Supabase. Then hand off to the user:
 
-**MCP not available** (Claude Code CLI or user with terminal access):
+> "Scaffold done. Open Claude Code in `<path>` and run `agentlink env add dev` in a terminal — it needs a browser for OAuth, which I don't have."
 
-Tell the user to run the CLI interactively — it handles Supabase login, project creation, and linking:
+After the user completes `env add dev`, run `npx create-agentlink@latest check` to confirm `ready: true`. For the full workflow (questions to ask, frontend flags, local-Docker opt-in), load the `cli` skill — see Workflow #1 in `skills/cli/references/workflows.md`.
 
-```bash
-npx create-agentlink@latest my-app
-```
-
-After either path, run `npx create-agentlink@latest check` to confirm `ready: true`.
-
-**The Supabase connector MCP is ONLY used for auth and project bootstrapping** — never for schema application, SQL execution, or ongoing development. All database work goes through the AgentLink CLI (`db apply`, `db migrate`).
+**The Supabase connector MCP is not used for project creation, schema application, SQL execution, or edge-function deploys.** All database and deploy work goes through the AgentLink CLI (`db apply`, `db migrate`, `env deploy`). The MCP tools (`apply_migration`, `execute_sql`, `create_project`, etc.) must not substitute for CLI commands.
 
 ### Ongoing development
 

@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Builder agent's "New project setup" no longer has an MCP branch.** The section in `agents/builder.md` had a dual path — "MCP available" (use `supabase_create_project` MCP tool + CLI with `--link`) vs "MCP not available" (tell user to run bare `create-agentlink`). The MCP path was creating a Supabase cloud project; the fallback instruction told the user to run `npx create-agentlink@latest <name>` which, without `--link`, triggered the CLI's interactive wizard and created a **second** Supabase project — leaving the first one orphaned. Replaced with a single agent-driven path: `npx create-agentlink@latest <name> --skip-env`, which scaffolds all files + deps + Claude Code config without touching Supabase. Agent hands off to the user for `agentlink env add dev` (browser OAuth). Aligns with `skills/cli/references/workflows.md` Workflow #1 and with `cli` 0.21.0's `--skip-env` "primary use case: AI agent running without browser access."
+- **`skills/cli/references/workflows.md` — "user has credentials from Supabase connector MCP" subsection reframed.** Renamed to "user pastes existing credentials (advanced)" with a one-liner guardrail: "User-driven only. Agents should use `--skip-env` above; never call MCP tools to fetch credentials themselves." Preserves the documentation of the escape hatch without inviting agents to take it.
+
 ## [0.18.0] - 2026-04-23
 
 ### Changed
