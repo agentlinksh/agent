@@ -157,9 +157,56 @@ npx supabase migration repair --status reverted <version1> <version2> ...
 
 **Fix:**
 ```bash
+# Full relink (pick "Relink" in the interactive prompt, or pass --project-ref)
 npx create-agentlink@latest env add dev
+
+# If a PREVIOUS env add died mid-bootstrap against the SAME project, use --retry instead:
+npx create-agentlink@latest env add dev --retry
 ```
-Re-running `env add` on an existing environment prompts to relink it. Connects to a new (or existing) Supabase project, updates all credentials and `.env.local`, links, pushes existing migrations, and deploys edge functions. Migrations are preserved.
+
+- **Relink** rewrites the env to point at a different cloud project and re-runs the full bootstrap. Use when the project was deleted, the DB URL is wrong, or you need to switch to a different project.
+- **`--retry`** re-runs the bootstrap against the stored `projectRef` without touching the manifest or `.env.local`. Use when the previous `env add` / `env relink` / `deploy` failed partway through — link, db push, vault upserts, functions deploy, or auth config died — and you want to resume without rewiring anything.
+
+Both preserve existing migrations.
+
+---
+
+### Re-login prompt despite valid stored tokens
+
+**Symptom:** `env add` / `env relink` shows "How would you like to authenticate?" even though you successfully logged in recently.
+
+**Cause:** Pre-v0.21 CLIs had a resolution-ladder gap — after the legacy-oauth → per-org credential migration wiped the single `oauth` slot, calling `ensureAccessToken` without an `orgId` (which happens at the top of `env add` before the user has picked) fell through all the per-org entries and hit the interactive prompt.
+
+**Fix:** Upgrade to v0.21+. Two changes resolve it: (1) `ensureAccessToken` now walks `oauth_by_org` when no `orgId` hint is given and picks any valid entry; (2) `env add` / `env relink` resolve the target org BEFORE the existing-vs-new choice so the correct per-org credential can be pinned early.
+
+---
+
+### `Forbidden` / revoked access on `env add` or project creation
+
+**Symptom:** Org picker completes without prompting you to log in, but then `supabase projects create` (or another Management API call) fails with `{"message":"Forbidden"}` or HTTP 403.
+
+**Cause:** The refresh token still works on paper (refresh endpoint returns a new access token), but the server no longer accepts that token for the target org — usually because org membership was revoked, admin access was removed, or the integration org changed its authorized-apps policy. Pre-v0.21 CLIs' 401-only retry path doesn't match 403 so the error bubbles up with no context.
+
+**Fix:** Upgrade to v0.21+. `pickOrg` now probes `GET /v1/projects` with the resolved token right after the user picks an org; on 401/403 it surfaces `▲ Stored credentials for <org> are no longer accepted. Re-authenticating…`, clears the stale `oauth_by_org[orgId]` entry, and kicks off a fresh org-scoped OAuth login before the rest of `env add` / `env relink` runs.
+
+---
+
+### Claude Code not found on PATH
+
+**Symptom:** Scaffold aborts with `Claude Code not found on PATH. Install Claude Code with our setup script: https://agentlink.sh/start`.
+
+**Cause:** The CLI no longer auto-installs Claude Code (removed in v0.20.1) — it validates and points users at the setup script instead.
+
+**Fix:**
+```bash
+# macOS / Linux
+curl -sSf https://agentlink.sh/start | sh
+
+# Windows (PowerShell)
+iwr https://agentlink.sh/start | iex
+```
+
+Then open a **new terminal** (so PATH reloads) and retry the scaffold.
 
 ---
 
@@ -259,5 +306,8 @@ rm supabase/migrations/<version>_name.sql
 | Duplicate migration files | `npx create-agentlink@latest db rebuild` |
 | `db push` says remote versions not found | `npx create-agentlink@latest db rebuild` |
 | Cloud project deleted / need new project | `npx create-agentlink@latest env add dev` (prompts to relink) |
+| `env add` / `deploy` died partway (same project) | `npx create-agentlink@latest env add <name> --retry` |
 | Broken migration state on new project | `npx create-agentlink@latest db rebuild` |
 | DB password was reset in dashboard | `npx create-agentlink@latest db password "newpass"` |
+| Claude Code not found on PATH | Install via `https://agentlink.sh/start`, open a new terminal |
+| `Forbidden` (403) on env add | Upgrade CLI; re-auth is automatic on v0.21+ |
