@@ -394,6 +394,47 @@ The generator writes `.github/workflows/deploy-<env>.yml` using `env deploy <nam
 
 ---
 
+## 10. Snapshot an env before a risky change
+
+**Trigger:** user says "back up before I run this," "snapshot prod," "I'm about to do something destructive," or anytime they're about to apply a migration that drops/renames/truncates, change auth config in a way that could lock them out, run `db rebuild` against a non-empty cloud env, or delete a noticeable chunk of data.
+
+**Questions to ask**
+
+- **Which env?** Usually the one they're about to change. The active env (`cloud.default`) is the default if they don't say.
+- **Local or cloud?** Doesn't really matter — `db backup` works on both. Local snapshots are mostly useful for verifying the backup command itself before pointing it at prod.
+
+**Commands**
+
+```bash
+# Active env (cloud.default if cloud, else local)
+npx create-agentlink@latest db backup
+
+# Explicit target — most useful before touching prod
+npx create-agentlink@latest db backup --env prod
+npx create-agentlink@latest db backup --env dev
+
+# Override URL entirely (e.g., backing up a non-registered project)
+npx create-agentlink@latest db backup --db-url "postgresql://postgres.[ref]:[pwd]@aws-0-[region].pooler.supabase.com:5432/postgres"
+```
+
+What it does:
+
+1. Resolves the DB URL via the standard ladder (`--db-url` flag → `cloud.environments[env]` pooler URL → `.env.local` → `supabase status`).
+2. Creates `supabase/backups/<env>/<YYYY-MM-DDTHH-MM-SS>/` (UTC, dashes instead of colons for Windows compatibility).
+3. On first run only, appends `supabase/backups/` to the project's root `.gitignore` under an "Agent Link — database backups" comment. Idempotent on re-runs.
+4. Runs three `supabase db dump` invocations: roles, schema, data (excluding `storage.buckets_vectors` / `storage.vector_indexes`). Each in its own spinner step.
+5. Prints file sizes at the end so the user can spot silent-empty failures.
+
+**Watch-outs**
+
+- **Snapshots may contain real production data.** They're gitignored by default; never `git add -f` them.
+- **Each run creates a NEW timestamped subdirectory.** Previous backups survive. Old ones accumulate over time — users prune manually (`rm -rf supabase/backups/<env>/<old-timestamp>/`).
+- **No `db restore` command exists.** Restoring is a separate problem with its own safety story (does it wipe the target? merge? fail on conflicts?). To restore manually: `psql <other-db-url> -f supabase/backups/<env>/<ts>/schema.sql` then `data.sql`. The agent should NOT run that autonomously — restoration is a developer-initiated action.
+- **The exclusion list is fixed** at the two `storage.*` tables Supabase recommends excluding. If the user has other huge tables they want skipped, point them at `supabase db dump` directly with custom `-x` flags — `db backup` is opinionated by design.
+- **The agent does NOT run `db backup` autonomously before destructive changes.** It's safe (read-only) but reading prod data is still a meaningful action, and the user should choose to do it. The agent's job is to point them at the command when the situation warrants it.
+
+---
+
 ## What the agent does NOT do
 
 - **Does not deploy.** Always point users at `agentlink env deploy` (interactive) or `agentlink env deploy <dev|prod>` (explicit).

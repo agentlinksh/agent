@@ -191,6 +191,20 @@ npx create-agentlink@latest db password "newpassword"    # Non-interactive: sets
 
 Shows or sets the database password for the active cloud project. The password is stored in `~/.config/agentlink/credentials.json` (per project ref). Use when the DB password was reset in the Supabase dashboard.
 
+### Snapshot the database (`db backup`)
+
+Packages Supabase's recommended `db dump` triplet into a single command — `roles.sql` (`--role-only`), `schema.sql` (definitions), and `data.sql` (`--use-copy --data-only -x storage.buckets_vectors -x storage.vector_indexes`). Files land under `supabase/backups/<env>/<YYYY-MM-DDTHH-MM-SS>/`; each run creates a fresh timestamped subdirectory so previous backups survive a failed new run.
+
+```bash
+npx create-agentlink@latest db backup                    # Active env (cloud.default, or local if none)
+npx create-agentlink@latest db backup --env prod         # Target prod (shows ▲ Active env: prod if active)
+npx create-agentlink@latest db backup --db-url "..."     # Override URL entirely
+```
+
+On first run, appends `supabase/backups/` to the project's root `.gitignore` under an "Agent Link — database backups" comment (idempotent on re-runs). Snapshots may contain real production data, so default-gitignored is non-negotiable.
+
+Read-only against the target DB. Works on cloud envs, local Docker, and bare projects — no `supabase/schemas/` or scaffolded files required. Use before risky migrations / data deletes / config changes; restore is a separate concern (no `db restore` command exists; the user does it manually with `psql -f` or `supabase db reset --db-url <other-env>` to replay onto a different env).
+
 ---
 
 ## Database Recovery
