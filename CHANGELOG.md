@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-04-24
+
 ### Added
 
 - **CLI skill documents bare mode.** New section in `skills/cli/SKILL.md` explains the `env add` path on a non-scaffolded directory: interactive "what you're opting out of" menu, minimal `agentlink.json` with `bare: true`, what works / what's a no-op until content appears, upgrade path via `--force-update`. New dedicated workflow #7 "Bare mode — Supabase env management on an existing codebase" in `workflows.md` with trigger, questions to ask, command flow, what-works table, and watch-outs. Cross-refs from workflow #1 (start from zero) and workflow #6 (connect existing) point users at bare mode when it's the better fit. Troubleshooting gains three entries: what the bare-mode menu is, "env deploy says Nothing to deploy," and "env config says No agentlink.json."
