@@ -2,7 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+
+- **CLI skill documents bare mode.** New section in `skills/cli/SKILL.md` explains the `env add` path on a non-scaffolded directory: interactive "what you're opting out of" menu, minimal `agentlink.json` with `bare: true`, what works / what's a no-op until content appears, upgrade path via `--force-update`. New dedicated workflow #7 "Bare mode — Supabase env management on an existing codebase" in `workflows.md` with trigger, questions to ask, command flow, what-works table, and watch-outs. Cross-refs from workflow #1 (start from zero) and workflow #6 (connect existing) point users at bare mode when it's the better fit. Troubleshooting gains three entries: what the bare-mode menu is, "env deploy says Nothing to deploy," and "env config says No agentlink.json."
+
 ### Changed
+
+- **`env deploy` documented as a three-step operation.** `skills/cli/SKILL.md` updated from "thin two-step" (schemas + functions) to three-step (migrations → schemas → functions). Each step gates on the corresponding `supabase/` directory existing; all-missing short-circuits with a friendly "Nothing to deploy" message. The `env deploy` workflow in `workflows.md` got the same treatment. Reflects CLI 0.23 which brings `supabase db push` into the standalone deploy path (previously migrations only ran during the initial bootstrap).
+
+- **New `### Server-side config (env config)` subsection in `skills/cli/SKILL.md`.** Full documentation of the command: subcommand table (secrets / db / auth / all), positional env-name form (`env config secrets prod`), rotation shortcut (`env config prod` treats the first positional as env when it's not a valid subcommand), relationship to `env add --retry` (env config is lighter) and `env deploy` (orthogonal — config vs schemas/functions/migrations). `workflows.md` Recovery E examples updated to the positional form across the board.
+
+- **Multi-org credentials section now documents per-project credentials.** `skills/cli/SKILL.md` added a breakdown of `project_credentials[projectRef]` in `~/.config/agentlink/credentials.json`: `db_password` (entered at env add; not re-fetchable) and `secret_key` (cached service-role key; auto-refreshed at every `getApiKeys` callsite). Also documents what's in the `.env.local` managed block for cloud envs, including the newly-added `SUPABASE_SECRET_KEY` (server-only, no prefix). Troubleshooting final table gains rows for "need config only" (→ `env config`), "existing codebase wants env plumbing only" (→ bare mode), and "env deploy prints Nothing to deploy" (→ add files or `--force-update`).
 
 - **Docs swept for the `config apply` → `env config` rename.** CLI 0.23 removes the top-level `agentlink config apply` command and replaces it with `agentlink env config [secrets|db|auth|all]` — a superset that adds vault secrets (+ edge-function `SB_*` mirror) alongside the existing auth and PostgREST sections. Touches:
   - `agents/builder.md` — truth-table rows for "Re-apply config" updated; added a dedicated row for "Re-apply vault + SB_* secrets."

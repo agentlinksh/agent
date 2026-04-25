@@ -79,6 +79,25 @@ cd my-project && npx create-agentlink@latest .
 
 Detects the existing directory and integrates AgentLink into it. Requires a clean git working tree.
 
+### Bare mode — env management without the full scaffold
+
+For users who want Supabase env plumbing (OAuth, project create/select, `.env.local` wiring) but NOT the AgentLink scaffold (schemas, RLS helpers, RPC layout, skills), running `env add` in a non-scaffolded directory opts into **bare mode**:
+
+```bash
+cd my-existing-app
+npx create-agentlink@latest env add dev
+# → "No agentlink.json found" menu with three choices:
+#     - Run the full Agent Link scaffold (recommended) → exits, tells user to run `npx create-agentlink@latest`
+#     - Continue without full features → writes a minimal agentlink.json, runs the Supabase flow
+#     - Cancel
+```
+
+If the user picks "Continue without full features," the CLI writes a minimal `agentlink.json` with `bare: true` and runs the full Supabase flow (OAuth → org pick → project create/select → credentials → `.env.local`). **No schemas applied, no server-side config (vault / PostgREST / auth hooks), no `CLAUDE.md` touched** — the user's file is theirs. `env use` / `env add` / `env relink` all skip `writeClaudeMd` in bare mode.
+
+What works in bare mode: `env add`/`use`/`remove`/`list`, `env config [secrets|db|auth|all]`, `db password`, `db url`. What's a no-op until the user adds content: `db apply` (skips with "supabase/schemas/ not found"), `env deploy` (picks up migrations/schemas/functions incrementally as they appear).
+
+Upgrade path: `npx create-agentlink@latest --force-update` converts a bare project to the full scaffold.
+
 ### Update an existing project
 
 ```bash
@@ -291,11 +310,19 @@ npx create-agentlink@latest env deploy prod --yes --non-interactive  # Full CI f
 npx create-agentlink@latest env deploy dev --dry-run        # Print target without applying
 ```
 
-`env deploy` is a **thin two-step operation**: (1) apply local schemas to the target env's database via `db apply`, (2) deploy `supabase/functions/*` to that env. It is idempotent (re-running is safe), does NOT generate a migration file, and does NOT mutate `manifest.cloud.default` (deploy is a one-shot action — `env use dev && env deploy prod` stays on dev afterwards).
+`env deploy` is a **three-step operation**, each step gated on the corresponding `supabase/` directory existing:
+
+1. **Migrations** — `supabase db push --db-url <pooler>` if `supabase/migrations/` and `supabase/config.toml` both exist. Idempotent (Supabase tracks applied entries in `schema_migrations` server-side). Bare projects with hand-created migrations but no `config.toml` get a loud amber "Skipping migrations" warning rather than silent `config.toml` fabrication.
+2. **Schemas** — `db apply` against the target env's database, if `supabase/schemas/` exists.
+3. **Functions** — `supabase functions deploy --project-ref <ref>`, if `supabase/functions/` exists with non-underscore-prefixed subdirectories.
+
+Each step is skipped independently if its directory is missing. A bare project with an empty `supabase/` tree prints `Nothing to deploy — no supabase/schemas, supabase/migrations, or supabase/functions found.` and exits 0 rather than running through an empty deploy banner.
+
+Does NOT generate a migration file, and does NOT mutate `manifest.cloud.default` (deploy is a one-shot action — `env use dev && env deploy prod` stays on dev afterwards).
 
 Things `env deploy` deliberately does NOT do (belong elsewhere):
 
-- **Vault secrets / PostgREST config / auth config.** These are applied during `env add` (initial bootstrap). For targeted re-applies without the heavier schemas/functions path, use `agentlink env config [secrets|db|auth|all]` — same primitives, cloud-only, idempotent, works on bare projects. For a full reset (schemas + functions + config + verify) use `env add <name> --retry`.
+- **Vault secrets / PostgREST config / auth config.** These are applied during `env add` (initial bootstrap). For targeted re-applies without the heavier schemas/functions path, use `agentlink env config [secrets|db|auth|all] [env-name]` — same primitives, cloud-only, idempotent, works on bare projects. For a full reset (schemas + functions + config + verify) use `env add <name> --retry`.
 - **Migration file generation.** Use `db migrate <name>` explicitly when you want an auditable artifact.
 - **Clean-tree gate.** `db apply` is idempotent, so running against a dirty tree is safe; the only reviewability loss is at the migration-diff level, which `env deploy` doesn't generate anyway.
 - **Data-risk analysis.** That was tied to the migration diff; use `db migrate` + review the generated SQL when you want it.
@@ -303,6 +330,35 @@ Things `env deploy` deliberately does NOT do (belong elsewhere):
 **The top-level `agentlink deploy` command has been removed.** The CLI intercepts `agentlink deploy` and `agentlink retry-deploy` with an error pointing at the new verb. CI workflows using `deploy --prod` / `deploy --ci` must migrate to `env deploy <name> --yes --non-interactive` (the `env add --setup-ci` generator emits the new form).
 
 **The agent does not deploy.** Deployment is initiated by the developer. When users ask to deploy, point them to `agentlink env deploy` (interactive picker) or `agentlink env deploy <dev|prod>` (explicit target).
+
+### Server-side config (`env config`)
+
+Three independent subsystems, each reusing the same primitives `bootstrapCloudEnv` runs during `env add`. Use for targeted re-applies without the heavier schemas/functions path of `env add --retry`. Cloud-only; idempotent; works on bare projects.
+
+| Subcommand | What it does |
+|-----------|--------------|
+| `secrets` | Seeds `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY` into Postgres Vault, AND mirrors them to edge-function secrets under `SB_*` prefix (`SB_URL` / `SB_PUBLISHABLE_KEY` / `SB_SECRET_KEY`). Set-if-absent — user-set custom `SB_*` values survive re-runs. The `SB_*` mirror exists because Supabase reserves the `SUPABASE_` prefix in edge-function env vars. |
+| `db` | PATCHes PostgREST to expose the `api` schema. |
+| `auth` | PATCHes auth config (hooks + signup settings). On bare projects the hook refs point at scaffolded `_hook_*` pg-functions that don't exist yet; Supabase returns a clear API error rather than silently misconfiguring. |
+| `all` | Runs all three in order. |
+
+Both positionals are optional; omit either for an interactive picker:
+
+```bash
+# Shape: env config [subcommand] [env-name]
+agentlink env config                      # Pick subcommand + env interactively
+agentlink env config secrets              # Subcommand given, env picker
+agentlink env config prod                 # Rotation: "prod" isn't a valid subcommand but IS a valid env → treated as env, subcommand picker runs
+agentlink env config secrets prod         # Both specified
+agentlink env config auth prod            # Just auth, against prod (confirms)
+agentlink env config all dev --yes        # Full re-apply to dev, no prompts
+agentlink env config secrets --env prod   # --env flag still accepted (for CI)
+```
+
+**How it relates to the other env commands:**
+- Lighter than `env add <name> --retry` (which also does schemas + functions + verify). Reach for `env config` when ONLY config drifted; reach for `--retry` when the whole env needs a reset.
+- Orthogonal to `env deploy` (which does schemas + functions + migrations but NOT config). Run both if both changed.
+- Works standalone on bare projects — the primary way bare users add server-side config incrementally without having to `--force-update`.
 
 ### Environment management
 
@@ -383,6 +439,13 @@ Supabase OAuth tokens are **scoped to a single organization** — the consent sc
 **Where credentials live**: `~/.config/agentlink/credentials.json`, with the active tokens keyed by org ID under `oauth_by_org`. Each entry carries its own access token, refresh token, expiry, and cached org name/slug. A legacy single-org `oauth` slot is still read for back-compat; a PAT (`supabase_access_token`) set via `agentlink sb token set` is the final fallback for CI.
 
 **Where org IDs live on disk**: each `CloudEnvironment` in `agentlink.json` carries an optional `orgId`. Populated on `env add`, lazily backfilled on older manifests when `env add`/`env relink`/`env use` runs (and when `env add <name>` triggers the internal retry flow for recovery) — the CLI walks stored org tokens, probes `GET /v1/projects` for each, matches returned project IDs against envs missing `orgId`, and persists the match. Silent when nothing to do (no API calls if all envs already have `orgId`).
+
+**Per-project credentials** live under `project_credentials[projectRef]` in the same file:
+
+- `db_password` — entered by the user at `env add` time. Not re-fetchable from the Management API, so we persist it. File mode 0600.
+- `secret_key` — the service-role-equivalent API key. Cached here so commands that need it don't have to re-hit `getApiKeys` on every invocation. Populated eagerly at every callsite that fetches API keys (env add / use / relink / retry / config + scaffold). If the user rotates the key in the Supabase dashboard, the next CLI command picks up the fresh value and overwrites the cache.
+
+**What ends up in `.env.local`'s managed block** for cloud envs: `VITE_/NEXT_PUBLIC_SUPABASE_URL`, `VITE_/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_DB_URL`, and `SUPABASE_SECRET_KEY` (server-only, no prefix — same rule as `SUPABASE_DB_URL`). All five are listed in `MANAGED_KEYS` so stale copies outside the block get stripped on every rewrite, preventing dev/prod env shadowing when the user runs `env use`.
 
 **CI**: set `SUPABASE_ACCESS_TOKEN` as a repo secret — a static PAT with admin access to the relevant org. OAuth is never triggered in CI.
 

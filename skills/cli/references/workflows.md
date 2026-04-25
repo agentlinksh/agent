@@ -70,6 +70,7 @@ Requires Docker running + `psql` installed. Prompts at `agentlink.sh/start` if m
 - `--skip-env`, `--link`, `--local` are mutually exclusive; pass only one.
 - If `claude` or `supabase` isn't on PATH, point the user at `https://agentlink.sh/start` and tell them to open a new terminal after install.
 - Do NOT run any `db apply` / `db sql` / `db migrate` / `deploy` commands on a `--skip-env`-scaffolded project before the user completes `env add dev` — the env doesn't exist yet.
+- If the user has an existing codebase and explicitly doesn't want the AgentLink scaffold (schemas, RLS helpers, skills, etc.) — they just want env management — point them at workflow #7 (bare mode) instead of `--skip-env`. Bare mode doesn't touch the user's existing file structure beyond `agentlink.json` and `.env.local`.
 
 ---
 
@@ -160,14 +161,17 @@ npx create-agentlink@latest env deploy prod --dry-run
 npx create-agentlink@latest env deploy prod --yes --non-interactive
 ```
 
-What `env deploy` does:
+What `env deploy` does (each step is gated on the corresponding `supabase/` directory existing):
 
-1. Apply local schemas (`db apply`) to the target env's DB (explicit pooler URL — works correctly even when `.env.local` points elsewhere).
-2. Deploy edge functions (`supabase functions deploy --project-ref <ref>`).
+1. **Migrations** — `supabase db push --db-url <pooler>` if `supabase/migrations/` and `supabase/config.toml` both exist. Idempotent; Supabase tracks applied entries server-side. Skipped with a loud amber warning if migrations exist but `config.toml` doesn't (bare-with-hand-created-migrations edge case — we never silently fabricate `config.toml` into a user's tree).
+2. **Schemas** — `db apply` against the target env's DB (explicit pooler URL — works correctly even when `.env.local` points elsewhere).
+3. **Functions** — `supabase functions deploy --project-ref <ref>` if `supabase/functions/` exists with non-underscore subdirectories.
+
+If ALL three directories are missing (bare project with an empty `supabase/` tree), `env deploy` short-circuits with `Nothing to deploy — no supabase/schemas, supabase/migrations, or supabase/functions found.` and exits 0.
 
 What it does NOT do — belongs elsewhere:
 
-- **Vault secrets / PostgREST config / auth config.** If `supabase/config.toml` or auth providers changed, use `agentlink env add <name>` → "Re-apply full setup" for the full reset, or `agentlink env config [secrets|db|auth|all]` for a targeted push of just the drifted subsystem. `env config` is cloud-only, idempotent, and works on bare projects.
+- **Vault secrets / PostgREST config / auth config.** If `supabase/config.toml` or auth providers changed, use `agentlink env add <name>` → "Re-apply full setup" for the full reset, or `agentlink env config [secrets|db|auth|all] [env-name]` for a targeted push of just the drifted subsystem. `env config` is cloud-only, idempotent, and works on bare projects. Positional env name matches the rest of the env group (`env config secrets prod`).
 - **Generate a migration file.** Use `db migrate <name>` explicitly when you want an auditable artifact committed to `supabase/migrations/`.
 - **Clean-tree gate.** `env deploy` is safe on dirty trees — no migration diff is generated. (The clean-tree gate still applies to `env add` / `env relink` / `--force-update`.)
 - **Data-risk analysis.** If the user wants that, point them at `db migrate` + manual review of the generated SQL.
@@ -215,11 +219,13 @@ npx create-agentlink@latest db url --fix         # Rewrite .env.local with the r
 # Recovery E: just need to push config changes (no schema or function drift)
 # `env config` is the replacement for the removed `config apply` command.
 # Three independent subsystems; pick the one that drifted or use `all`.
-npx create-agentlink@latest env config secrets   # Vault + edge-function SB_* mirror
-npx create-agentlink@latest env config auth      # Only auth config (hooks + signup)
-npx create-agentlink@latest env config db        # Only PostgREST (expose api schema)
-npx create-agentlink@latest env config all       # All three
-npx create-agentlink@latest env config           # Interactive picker
+# Shape: env config [subcommand] [env-name] — both positional, --env flag still accepted.
+npx create-agentlink@latest env config secrets prod   # Vault + edge-function SB_* mirror on prod
+npx create-agentlink@latest env config auth dev       # Only auth config (hooks + signup) on dev
+npx create-agentlink@latest env config db prod        # Only PostgREST (expose api schema) on prod
+npx create-agentlink@latest env config all prod       # All three on prod (prompts for y/N)
+npx create-agentlink@latest env config prod           # Env=prod, subcommand picker runs
+npx create-agentlink@latest env config                # Both pickers (subcommand + env)
 
 # Recovery F: broken migration state (duplicates, timestamp conflicts)
 npx create-agentlink@latest db rebuild
@@ -258,10 +264,77 @@ npx create-agentlink@latest <name> --link \
 **Watch-outs**
 
 - If the user has a fresh scaffold from `--skip-env` and is ready to complete setup, this is exactly the `env add dev` step — no `--project-ref` needed if they want to create a new project (the wizard offers both).
+- If the user DOESN'T want the AgentLink scaffold at all — just Supabase env plumbing in their own codebase — use bare mode (workflow #7 below) instead of `--link`. Bare mode doesn't touch the user's file structure beyond writing `agentlink.json` and `.env.local`.
 
 ---
 
-## 7. Rotate a database password
+## 7. Bare mode — Supabase env management on an existing codebase
+
+**Trigger:** user says "I already have a Next.js/Vite app, I just want AgentLink to manage my Supabase env," "don't scaffold anything, just wire up the env," "use AgentLink's env commands on my existing project," or runs `agentlink env add` in a directory that has no `agentlink.json`.
+
+**Questions to ask**
+
+- **Dev or prod?** Same as regular `env add`.
+- **Which Supabase organization?** Same org picker as scaffolded flow.
+- **Is this the right trade-off?** Bare mode gives up: the scaffolded `api` schema isolation, RLS helpers, RPC layout, auth hooks, edge-function wrappers, companion skills, and the opinionated `supabase/schemas/` layout. If the user wants any of those, point them at the full scaffold (workflow #1) or `--force-update` to upgrade a bare project later.
+
+**Commands**
+
+```bash
+cd my-existing-app
+npx create-agentlink@latest env add dev
+```
+
+Interactive flow when no `agentlink.json` is present:
+
+```
+▲ No agentlink.json found in this directory.
+
+  Agent Link's full scaffold gives you:
+    • RLS + multi-tenant auth helpers, wired in from day one
+    • RPC-first data layer (api schema + typed client)
+    • Edge-function wrappers for webhooks and external APIs
+    • Opinionated schema file layout + idempotent db apply
+    • Claude Code skills that teach an agent how to build on all of it
+
+  More at https://agentlink.sh
+
+? How would you like to continue with env add dev?
+  ❯ Run the full Agent Link scaffold (recommended)
+    Continue without full features
+    Cancel
+```
+
+- **Full scaffold** → aborts; user runs `npx create-agentlink@latest my-app` in a fresh dir or `npx create-agentlink@latest .` in this one (clean-tree required).
+- **Continue without full features** → writes a minimal `agentlink.json` with `bare: true`, runs the full Supabase flow (OAuth → org pick → project select/create → credentials → `.env.local`). No schemas applied, no server-side config, no `CLAUDE.md` touched.
+
+**What works in bare mode afterward**
+
+| Command | Behavior |
+|---------|----------|
+| `env add` / `env use` / `env remove` / `env list` | Normal, but `env use` / `env add` skip CLAUDE.md writes. |
+| `env config [secrets\|db\|auth\|all] [env]` | Primary way to add server-side config incrementally. |
+| `env deploy [env]` | No-op until the user drops files into `supabase/migrations/`, `supabase/schemas/`, or `supabase/functions/`. Each step gates on its directory. |
+| `db password` / `db url` | Normal. |
+| `db apply` | Prints `Skipping schema apply — supabase/schemas/ not found.` and exits 0. |
+
+**Upgrade path**
+
+```bash
+npx create-agentlink@latest --force-update
+```
+
+Converts a bare project to the full scaffold: re-applies template files, generates migrations, runs the setup SQL. Requires a clean git tree.
+
+**Watch-outs**
+
+- Bare mode does NOT run `bootstrapCloudEnv` at `env add` time — the Supabase project is created but vault secrets / PostgREST / auth config are NOT applied. If the user later wants any of those, `agentlink env config all [env]` applies them without touching schemas.
+- The `bare: true` flag in `agentlink.json` is orthogonal to `mode`. `setDefaultEnvironment` flips `mode` to `"cloud"` on first `env add dev`, but `bare` persists — that's how `env use` etc. continue to respect the bare boundary across every subsequent command.
+- On bare projects, `env config auth` will apply `AUTH_CONFIG` with hook references to pg-functions that don't exist (`_hook_before_user_created`, `_hook_send_email`). Supabase's API returns a clear error — at that point the user either upgrades via `--force-update` or drops in their own hook functions first.
+
+---
+
+## 8. Rotate a database password
 
 **Trigger:** user says "I reset the DB password in the dashboard," "password changed," "`db apply` is failing with auth error."
 
@@ -286,7 +359,7 @@ npx create-agentlink@latest db password "new-password-here"
 
 ---
 
-## 8. Deploy from CI
+## 9. Deploy from CI
 
 **Trigger:** user asks for CI/CD setup, generates a GitHub Actions workflow, or wants to automate deploys.
 
