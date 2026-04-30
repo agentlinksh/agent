@@ -6,7 +6,7 @@ An opinionated way to build on Supabase with AI agents.
 
 Agent Link is a [Claude Code plugin](https://docs.anthropic.com/en/docs/claude-code/plugins) with composable skills and an app development agent. Each skill covers a specific domain — CLI, schema development, RPCs, edge functions, auth, frontend — and Claude loads whichever skills are relevant to the current task automatically. The agent bundles all skills together with architecture enforcement.
 
-It ships alongside the [`agentlink` CLI](https://www.npmjs.com/package/agentlink-sh) — the plugin's hands. The CLI scaffolds new Supabase projects (cloud or local Docker), manages multiple environments (`local` / `dev` / `prod`), applies schemas, generates migrations, and deploys schemas + edge functions to any cloud env. The agent reasons about *what* to build; the CLI does the work the agent shouldn't do itself — OAuth, project creation, environment switching, deploys.
+It ships alongside the [`agentlink` CLI](https://www.npmjs.com/package/agentlink-sh) — the plugin's hands. The CLI scaffolds new Supabase projects (cloud or local Docker), manages multiple environments (`local` / `dev` / `prod`), applies schemas, generates migrations, and deploys schemas + edge functions to any cloud env. The agent reasons about _what_ to build; the CLI does the work the agent shouldn't do itself — OAuth, project creation, environment switching, deploys.
 
 ---
 
@@ -34,7 +34,7 @@ After global install, every CLI command is just `agentlink <subcommand>` — `ag
 
 ## Usage
 
-Describe what you want to build and tell Claude to use Agent Link. The agent handles the rest — prerequisites, architecture, and the right skills for the job.
+Describe what you want to build. The agent handles the rest — prerequisites, architecture, and the right skills for the job.
 
 ```
 Build me an uptime monitor that checks endpoints every 5 minutes.
@@ -63,19 +63,6 @@ Skills also activate automatically when Claude detects a relevant task. You can 
 
 ---
 
-## How It Works
-
-Skills use progressive disclosure to keep context lean:
-
-1. **Metadata** (~100 tokens per skill) — name + description, always in context
-2. **SKILL.md** — loads when a skill triggers, contains the core workflow
-3. **References** — loaded on demand from SKILL.md for detailed patterns
-4. **Assets** — ready-to-copy SQL and TypeScript files dropped into projects
-
-The `@link:builder` agent preloads all six domain skills and enforces architecture patterns. Individual skills can also be used standalone — Claude loads multiple skills simultaneously when a task spans domains.
-
----
-
 ## Agent Configuration
 
 The app development agent ships with opinionated defaults:
@@ -97,7 +84,9 @@ Local mode (`--local`) runs Supabase in Docker via `supabase start`. SQL execute
 
 ### Production guardrail
 
-The agent deploys autonomously to `local` and `dev` environments — `agentlink db apply`, `env deploy dev`, `db migrate`, and `supabase functions deploy` all run without prompting. **Production is gated.** Any command targeting prod (`env deploy prod`, `env use prod`, `env add prod`, `db push` against a prod URL, `destroy`) requires explicit user approval at call time. Approval is per-command, not a blanket pass.
+The agent deploys autonomously to `local` and `dev` environments — `db apply` and `env deploy` against your `dev` environment run without prompting.
+
+**Production is gated.** Any command targeting `prod` requires explicit user approval at call time. Approval is per-command, not a blanket pass.
 
 ### Blocked commands
 
@@ -106,7 +95,7 @@ A PreToolUse hook (`hooks/block-destructive-db.sh`) blocks the agent from runnin
 - `npx supabase db reset` — destroys and recreates the local database
 - `npx supabase db push --force` / `-f` — overwrites remote schema without diffing
 
-If you need these, run them manually.
+If you need these, run them manually on your terminal outside Claude Code.
 
 ---
 
@@ -117,6 +106,7 @@ The CLI installs a curated set of companion skills automatically — the agent a
 **Auto-installed for every project:**
 
 - `supabase/agent-skills@supabase-postgres-best-practices` (required)
+- `supabase/server` (required)
 - `anthropics/skills@frontend-design`
 - `shadcn/ui`
 - `vercel-labs/agent-skills@vercel-react-best-practices`
@@ -126,17 +116,13 @@ The CLI installs a curated set of companion skills automatically — the agent a
 
 - `vercel-labs/next-skills --skill next-best-practices`
 
-To install or update a companion skill manually:
+To install or update a companion skill manually use the `skills` cli:
 
 ```bash
 npx skills add supabase/agent-skills@supabase-postgres-best-practices
 ```
 
 ---
-
-## Contributing
-
-Agent Link is open source. If you've found a pattern that works, a mistake agents keep making, or a gap — we want to hear about it.
 
 ## License
 
