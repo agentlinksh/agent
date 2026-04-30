@@ -153,7 +153,7 @@ Use `agentlink info <name>` to read the annotation docs for any managed resource
 | Fix DB URL | N/A | `agentlink db url --fix` |
 | Rebuild migrations | `agentlink db rebuild` | `agentlink db rebuild` |
 | Re-apply config (all) | N/A | `agentlink env config all` |
-| Re-apply vault + SB_* secrets | N/A | `agentlink env config secrets` |
+| Re-apply vault secrets | N/A | `agentlink env config secrets` |
 | Re-apply auth config | N/A (restart Supabase) | `agentlink env config auth` |
 | Re-apply PostgREST config | N/A (restart Supabase) | `agentlink env config db` |
 
