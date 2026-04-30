@@ -30,16 +30,16 @@ Check `CLAUDE.md` in the project root for the project mode (**cloud** or **local
 Scaffold via the AgentLink CLI — never via the Supabase connector MCP. The agent has no browser for Supabase OAuth, so use `--skip-env`:
 
 ```bash
-npx create-agentlink@latest <name> --skip-env
+agentlink <name> --skip-env
 # or, to scaffold into the current directory:
-npx create-agentlink@latest . --skip-env
+agentlink . --skip-env
 ```
 
 This writes all files, installs deps, configures Claude Code, and registers the plugin + companion skills — without touching Supabase. Then hand off to the user:
 
 > "Scaffold done. Open Claude Code in `<path>` and run `agentlink env add dev` in a terminal — it needs a browser for OAuth, which I don't have."
 
-After the user completes `env add dev`, run `npx create-agentlink@latest check` to confirm `ready: true`. For the full workflow (questions to ask, frontend flags, local-Docker opt-in), load the `cli` skill — see Workflow #1 in `skills/cli/references/workflows.md`.
+After the user completes `env add dev`, run `agentlink check` to confirm `ready: true`. For the full workflow (questions to ask, frontend flags, local-Docker opt-in), load the `cli` skill — see Workflow #1 in `skills/cli/references/workflows.md`.
 
 **The Supabase connector MCP is not used for project creation, schema application, SQL execution, or edge-function deploys.** All database and deploy work goes through the AgentLink CLI (`db apply`, `db migrate`, `env deploy`). The MCP tools (`apply_migration`, `execute_sql`, `create_project`, etc.) must not substitute for CLI commands.
 
@@ -57,7 +57,7 @@ After the user completes `env add dev`, run `npx create-agentlink@latest check` 
 
 ### Diagnose with `check`
 
-Command: `npx create-agentlink@latest check`
+Command: `agentlink check`
 
 Outputs JSON with `ready`, `supabase_running`, `database` (extensions, queues, functions, secrets, api_schema), and `files`. Use it before starting work, after errors, or when something seems missing. Look at which fields are `false` to pinpoint the issue.
 
@@ -65,7 +65,7 @@ Outputs JSON with `ready`, `supabase_running`, `database` (extensions, queues, f
 
 ### Fix with `--force-update`
 
-Command: `npx create-agentlink@latest --force-update`
+Command: `agentlink --force-update`
 
 Overwrites template files, patches `config.toml`, applies SQL setup, and generates migrations if schema changed. Requires Supabase to be running. Use after `check` reports missing components or after a CLI version upgrade.
 
@@ -73,13 +73,13 @@ Typical workflow: `check` → identify what's wrong → `--force-update` → `ch
 
 ### Look up components with `info`
 
-Commands: `npx create-agentlink@latest info` (summary list) or `npx create-agentlink@latest info <name>` (detail for one component).
+Commands: `agentlink info` (summary list) or `agentlink info <name>` (detail for one component).
 
 Outputs JSON with type, summary, description, signature, and related components. Use after `check` reports a missing component and you need to understand what it does before deciding how to fix it.
 
 ### Debug failures
 
-Flag: `npx create-agentlink@latest --debug`
+Flag: `agentlink --debug`
 
 Writes detailed log to `agentlink-debug.log` in the project directory. Use when scaffold or `--force-update` fails with an unclear error. Tell the user to share the log contents if you can't resolve the issue.
 
@@ -89,9 +89,9 @@ SQL files in `supabase/schemas/` contain `-- @agentlink <name>` annotations mark
 
 When you encounter an issue with a managed resource:
 
-1. **Check for updates:** `npx create-agentlink@latest check` — a newer CLI version may ship a fix
-2. **Update resources:** `npx create-agentlink@latest --force-update` — re-applies the latest managed versions
-3. **Verify:** `npx create-agentlink@latest check` — confirm `ready: true`
+1. **Check for updates:** `agentlink check` — a newer CLI version may ship a fix
+2. **Update resources:** `agentlink --force-update` — re-applies the latest managed versions
+3. **Verify:** `agentlink check` — confirm `ready: true`
 
 #### Customizing a managed function (project-scoped override)
 
@@ -101,7 +101,7 @@ When the app needs a managed function to behave differently (e.g., `_internal_ad
 2. Find the function you need to customize
 3. **Remove only that function's `-- @agentlink` annotation block** (the `-- @agentlink`, `-- @type`, `-- @summary`, `-- @description`, etc. comment lines above the `CREATE` statement). Keep the function itself.
 4. Modify the function body as needed
-5. Apply: `npx create-agentlink@latest db apply`
+5. Apply: `agentlink db apply`
 6. Tell the user you've created a project-specific override and why
 
 **How it works:** `--force-update` merges at the function level. It compares each `@agentlink`-annotated block in the template against the on-disk file. Functions that still have the annotation get updated from the template. Functions where the annotation was removed are left untouched — your custom version is preserved. Other functions in the same file continue to receive CLI updates normally.
@@ -127,35 +127,35 @@ CREATE OR REPLACE FUNCTION public._internal_admin_handle_new_user()
 ...$$;
 ```
 
-Use `npx create-agentlink@latest info <name>` to read the annotation docs for any managed resource — it shows the type, description, signature, and related components.
+Use `agentlink info <name>` to read the annotation docs for any managed resource — it shows the type, description, signature, and related components.
 
 #### Tools reference
 
 | Task | Local | Cloud |
 | ---- | ----- | ----- |
-| Apply SQL (all schemas) | `npx create-agentlink@latest db apply` | `npx create-agentlink@latest db apply` |
-| Apply SQL (single statement) | `npx create-agentlink@latest db sql "<query>"` or `psql` | `npx create-agentlink@latest db sql "<query>"` |
-| Generate types | `npx create-agentlink@latest db types` | `npx create-agentlink@latest db types` |
+| Apply SQL (all schemas) | `agentlink db apply` | `agentlink db apply` |
+| Apply SQL (single statement) | `agentlink db sql "<query>"` or `psql` | `agentlink db sql "<query>"` |
+| Generate types | `agentlink db types` | `agentlink db types` |
 | Edge functions (dev) | `npx supabase functions serve` | `npx supabase functions deploy` |
 | Set secrets | `npx supabase secrets set KEY=value` | `npx supabase secrets set KEY=value` |
 | Security review | `supabase:get_advisors` (MCP) | N/A |
 | Get connection info | `npx supabase status` | Read `.env.local` |
-| Generate migration (artifact) | `npx create-agentlink@latest db migrate name` | `npx create-agentlink@latest db migrate name` |
+| Generate migration (artifact) | `agentlink db migrate name` | `agentlink db migrate name` |
 | Push migration (artifact) | N/A (already applied locally) | `npx supabase db push` |
-| Deploy schemas + functions to a cloud env | N/A | `npx create-agentlink@latest env deploy <dev\|prod>` |
-| Switch active environment | `npx create-agentlink@latest env use <name>` | `npx create-agentlink@latest env use <name>` |
-| List environments | `npx create-agentlink@latest env list` | `npx create-agentlink@latest env list` |
-| Add environment | `npx create-agentlink@latest env add prod` | `npx create-agentlink@latest env add prod` |
-| Remove environment | `npx create-agentlink@latest env remove staging -y` | `npx create-agentlink@latest env remove staging -y` |
-| Relink to new project | `npx create-agentlink@latest env add dev` (prompts to relink) | `npx create-agentlink@latest env add dev` |
-| Re-apply full setup (recovery / config drift) | N/A | `npx create-agentlink@latest env add <name> --retry` |
-| Set DB password | N/A | `npx create-agentlink@latest db password "value"` |
-| Fix DB URL | N/A | `npx create-agentlink@latest db url --fix` |
-| Rebuild migrations | `npx create-agentlink@latest db rebuild` | `npx create-agentlink@latest db rebuild` |
-| Re-apply config (all) | N/A | `npx create-agentlink@latest env config all` |
-| Re-apply vault + SB_* secrets | N/A | `npx create-agentlink@latest env config secrets` |
-| Re-apply auth config | N/A (restart Supabase) | `npx create-agentlink@latest env config auth` |
-| Re-apply PostgREST config | N/A (restart Supabase) | `npx create-agentlink@latest env config db` |
+| Deploy schemas + functions to a cloud env | N/A | `agentlink env deploy <dev\|prod>` |
+| Switch active environment | `agentlink env use <name>` | `agentlink env use <name>` |
+| List environments | `agentlink env list` | `agentlink env list` |
+| Add environment | `agentlink env add prod` | `agentlink env add prod` |
+| Remove environment | `agentlink env remove staging -y` | `agentlink env remove staging -y` |
+| Relink to new project | `agentlink env add dev` (prompts to relink) | `agentlink env add dev` |
+| Re-apply full setup (recovery / config drift) | N/A | `agentlink env add <name> --retry` |
+| Set DB password | N/A | `agentlink db password "value"` |
+| Fix DB URL | N/A | `agentlink db url --fix` |
+| Rebuild migrations | `agentlink db rebuild` | `agentlink db rebuild` |
+| Re-apply config (all) | N/A | `agentlink env config all` |
+| Re-apply vault + SB_* secrets | N/A | `agentlink env config secrets` |
+| Re-apply auth config | N/A (restart Supabase) | `agentlink env config auth` |
+| Re-apply PostgREST config | N/A (restart Supabase) | `agentlink env config db` |
 
 ### Deployment
 
@@ -243,7 +243,7 @@ Develop with the Supabase CLI — locally via Docker or against a cloud project.
 The agent focuses on development. Write SQL, apply it, keep building. Migrations are a separate deployment concern — not part of the build loop.
 
 1. **Write SQL** to schema files in `supabase/schemas/` (not to migration files)
-2. **Apply** — `npx create-agentlink@latest db apply`
+2. **Apply** — `agentlink db apply`
 3. **Fix errors** with more SQL — never reset the database
 4. **Iterate** until the feature is complete
 
@@ -264,7 +264,7 @@ supabase/schemas/
     └── chart.sql              # agent builds — api.chart_* functions + grants
 ```
 
-**Migrations** are generated only when the user explicitly asks, or as part of a deployment workflow. Use `npx create-agentlink@latest db migrate name` — never create migration files manually.
+**Migrations** are generated only when the user explicitly asks, or as part of a deployment workflow. Use `agentlink db migrate name` — never create migration files manually.
 
 Load the `database` skill for the full workflow, schema file conventions, and worked examples.
 

@@ -2,7 +2,11 @@
 
 ## [Unreleased]
 
-## [0.22.0] - 2026-04-30
+### Changed
+
+- **Docs assume the CLI is installed globally.** `npm install -g create-agentlink@latest` is now the recommended path, after which every command is the bare `agentlink <subcommand>`. Swept all `.md` files under `agents/` and `skills/` (~120 occurrences across 13 files) replacing `npx create-agentlink@latest` with `agentlink`. CHANGELOG history left untouched.
+
+- **README rewritten against current CLI behavior.** Audit fixes: added the `cli` skill to the skills list (was missing — the builder agent preloads 6 skills, not 5); corrected slash-command namespace from `/agentlink:*` to `/link:*` and agent reference from `@agentlink:builder` to `@link:builder` (matches `plugin.json` `name: "link"`); rewrote the Setup section around cloud-as-default with `--local` opt-in; replaced the local-only MCP framing with a "Cloud vs local mode" subsection (cloud uses the Supabase Management API + pooler, MCP is local-only); added a "Production guardrail" subsection documenting the autonomous-on-dev / approval-required-for-prod model from 0.21.0; rewrote Companion Skills around auto-install (CLI installs them by default, manual is the escape hatch) and added the previously-missing `shadcn/ui`.
 
 ### Changed
 
