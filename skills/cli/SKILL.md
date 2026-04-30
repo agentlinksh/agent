@@ -5,7 +5,7 @@ description: AgentLink CLI usage, project scaffolding, updates, and migration ma
 
 # CLI
 
-The `create-agentlink` CLI scaffolds new Supabase projects and updates existing ones. It handles infrastructure setup, template files, database configuration, and migration generation.
+The `agentlink` CLI scaffolds new Supabase projects and updates existing ones. It handles infrastructure setup, template files, database configuration, and migration generation.
 
 > **Workflow playbook:** see `references/workflows.md` for common user scenarios — "start a new project from zero," "add a prod env," "deploy to prod," "recover from a failed deploy," etc. Each entry lists what questions to ask the user and which commands to run.
 
@@ -126,26 +126,26 @@ Shows type, summary, description, signature, and related components. Use to unde
 
 ### Flags
 
-| Flag | Effect |
-|------|--------|
-| `--no-skills` | Skip companion skill installation |
-| `--nextjs` | Use Next.js instead of Vite for frontend |
-| `--no-frontend` | Skip frontend scaffolding (backend only) |
-| `--no-launch` | Skip launching Claude Code after scaffold |
-| `-y, --yes` | Auto-confirm all prompts |
-| `--local` | Use local Docker instead of Supabase Cloud (cloud is default) |
-| `--skip-env` | Scaffold files only — skip all Supabase setup (OAuth, project creation, Docker). User runs `agentlink env add dev` after. **Use for agent-driven scaffolding.** Mutually exclusive with `--local` / `--link`. |
-| `--force-update` | Force update even if project is up to date |
-| `--link` | Non-interactive scaffold + link (requires `--project-ref`, `--db-url`, `--api-url`, `--publishable-key`, `--secret-key`). Mutually exclusive with `--skip-env`. |
-| `--project-ref <ref>` | Supabase project reference ID (used with `--link`) |
-| `--db-url <url>` | Database connection URL (used with `--link`) |
-| `--api-url <url>` | Supabase API URL (used with `--link`) |
-| `--publishable-key <key>` | Supabase publishable/anon key (used with `--link`) |
-| `--secret-key <key>` | Supabase secret/service role key (used with `--link`) |
-| `--prompt <prompt>` | What to build (passed to Claude Code on launch) |
-| `--resume` | Resume a previously failed scaffold |
-| `--non-interactive` | Error instead of prompting when info is missing |
-| `--debug` | Write detailed log to `agentlink-debug.log` |
+| Flag                      | Effect                                                                                                                                                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--no-skills`             | Skip companion skill installation                                                                                                                                                                             |
+| `--nextjs`                | Use Next.js instead of Vite for frontend                                                                                                                                                                      |
+| `--no-frontend`           | Skip frontend scaffolding (backend only)                                                                                                                                                                      |
+| `--no-launch`             | Skip launching Claude Code after scaffold                                                                                                                                                                     |
+| `-y, --yes`               | Auto-confirm all prompts                                                                                                                                                                                      |
+| `--local`                 | Use local Docker instead of Supabase Cloud (cloud is default)                                                                                                                                                 |
+| `--skip-env`              | Scaffold files only — skip all Supabase setup (OAuth, project creation, Docker). User runs `agentlink env add dev` after. **Use for agent-driven scaffolding.** Mutually exclusive with `--local` / `--link`. |
+| `--force-update`          | Force update even if project is up to date                                                                                                                                                                    |
+| `--link`                  | Non-interactive scaffold + link (requires `--project-ref`, `--db-url`, `--api-url`, `--publishable-key`, `--secret-key`). Mutually exclusive with `--skip-env`.                                               |
+| `--project-ref <ref>`     | Supabase project reference ID (used with `--link`)                                                                                                                                                            |
+| `--db-url <url>`          | Database connection URL (used with `--link`)                                                                                                                                                                  |
+| `--api-url <url>`         | Supabase API URL (used with `--link`)                                                                                                                                                                         |
+| `--publishable-key <key>` | Supabase publishable/anon key (used with `--link`)                                                                                                                                                            |
+| `--secret-key <key>`      | Supabase secret/service role key (used with `--link`)                                                                                                                                                         |
+| `--prompt <prompt>`       | What to build (passed to Claude Code on launch)                                                                                                                                                               |
+| `--resume`                | Resume a previously failed scaffold                                                                                                                                                                           |
+| `--non-interactive`       | Error instead of prompting when info is missing                                                                                                                                                               |
+| `--debug`                 | Write detailed log to `agentlink-debug.log`                                                                                                                                                                   |
 
 ---
 
@@ -234,7 +234,7 @@ Fetches the real pooler DB URL from the Supabase Management API (Supavisor, IPv4
 
 **During development**, the agent only uses `db apply`. Schema files are the source of truth — the agent writes SQL, applies it, and keeps building. No migrations are generated during development.
 
-**For deployment**, `env deploy` runs `db apply` + `functions deploy` against the chosen env — no migration file is generated. Migrations are a separate concern: they are a deployment *artifact* you create explicitly when you want an auditable change record (e.g., for change review, rollback planning, or CI that replays migration history).
+**For deployment**, `env deploy` runs `db apply` + `functions deploy` against the chosen env — no migration file is generated. Migrations are a separate concern: they are a deployment _artifact_ you create explicitly when you want an auditable change record (e.g., for change review, rollback planning, or CI that replays migration history).
 
 ```bash
 # Development — the agent's loop
@@ -349,12 +349,12 @@ Things `env deploy` deliberately does NOT do (belong elsewhere):
 
 Three independent subsystems, each reusing the same primitives `bootstrapCloudEnv` runs during `env add`. Use for targeted re-applies without the heavier schemas/functions path of `env add --retry`. Cloud-only; idempotent; works on bare projects.
 
-| Subcommand | What it does |
-|-----------|--------------|
-| `secrets` | Seeds `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY` into Postgres Vault, AND mirrors them to edge-function secrets under `SB_*` prefix (`SB_URL` / `SB_PUBLISHABLE_KEY` / `SB_SECRET_KEY`). Set-if-absent — user-set custom `SB_*` values survive re-runs. The `SB_*` mirror exists because Supabase reserves the `SUPABASE_` prefix in edge-function env vars. |
-| `db` | PATCHes PostgREST to expose the `api` schema. |
-| `auth` | PATCHes auth config (hooks + signup settings). On bare projects the hook refs point at scaffolded `_hook_*` pg-functions that don't exist yet; Supabase returns a clear API error rather than silently misconfiguring. |
-| `all` | Runs all three in order. |
+| Subcommand | What it does                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `secrets`  | Seeds `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY` into Postgres Vault, AND mirrors them to edge-function secrets under `SB_*` prefix (`SB_URL` / `SB_PUBLISHABLE_KEY` / `SB_SECRET_KEY`). Set-if-absent — user-set custom `SB_*` values survive re-runs. The `SB_*` mirror exists because Supabase reserves the `SUPABASE_` prefix in edge-function env vars. |
+| `db`       | PATCHes PostgREST to expose the `api` schema.                                                                                                                                                                                                                                                                                                                                         |
+| `auth`     | PATCHes auth config (hooks + signup settings). On bare projects the hook refs point at scaffolded `_hook_*` pg-functions that don't exist yet; Supabase returns a clear API error rather than silently misconfiguring.                                                                                                                                                                |
+| `all`      | Runs all three in order.                                                                                                                                                                                                                                                                                                                                                              |
 
 Both positionals are optional; omit either for an interactive picker:
 
@@ -370,6 +370,7 @@ agentlink env config secrets --env prod   # --env flag still accepted (for CI)
 ```
 
 **How it relates to the other env commands:**
+
 - Lighter than `env add <name> --retry` (which also does schemas + functions + verify). Reach for `env config` when ONLY config drifted; reach for `--retry` when the whole env needs a reset.
 - Orthogonal to `env deploy` (which does schemas + functions + migrations but NOT config). Run both if both changed.
 - Works standalone on bare projects — the primary way bare users add server-side config incrementally without having to `--force-update`.
@@ -378,11 +379,11 @@ agentlink env config secrets --env prod   # --env flag still accepted (for CI)
 
 AgentLink enforces a **fixed three-environment model**: `local`, `dev`, `prod`. Nothing else is accepted.
 
-| Env | Meaning | Created by |
-|-----|---------|-----------|
-| `local` | Local Docker Supabase | `agentlink env use local` (switches to it; the Docker stack itself is `supabase start`) |
-| `dev` | The cloud development env | `agentlink env add dev` |
-| `prod` | The cloud production env | `agentlink env add prod` |
+| Env     | Meaning                   | Created by                                                                              |
+| ------- | ------------------------- | --------------------------------------------------------------------------------------- |
+| `local` | Local Docker Supabase     | `agentlink env use local` (switches to it; the Docker stack itself is `supabase start`) |
+| `dev`   | The cloud development env | `agentlink env add dev`                                                                 |
+| `prod`  | The cloud production env  | `agentlink env add prod`                                                                |
 
 Attempts to add `staging`, `dev2`, `production`, etc. fail with a clear error. Legacy manifests carrying off-model names are blocked at command entry with an `env remove` hint. Inspection commands (`env list`, `env remove`) remain permissive so users can see and clean up legacy entries.
 
@@ -426,7 +427,7 @@ agentlink env add dev --retry             # Re-apply full setup (schemas, functi
 
 After confirming, every subsequent `env deploy` / `db apply` / `db sql` / `db rebuild` prints an `▲ Active env: prod` banner at the top as a persistent reminder across terminals and agent sessions.
 
-`env add <name>` handles both new environments and relinking existing ones. When the env already exists, a recovery prompt offers three actions: **Re-apply full setup** (re-runs bootstrap — schemas, functions, secrets, PostgREST + auth config — against the same project; for mid-deploy failures or config changes), **Relink to a different Supabase project** (for deleted/wrong projects), or **Cancel**. The picker shows a dim hint above: *"If you just changed schemas or functions, cancel and run `agentlink env deploy <name>` instead."* — steering users away from the heavier full-setup when the lighter deploy would do. `--retry` triggers the full-setup path non-interactively; `--project-ref <ref>` triggers relink.
+`env add <name>` handles both new environments and relinking existing ones. When the env already exists, a recovery prompt offers three actions: **Re-apply full setup** (re-runs bootstrap — schemas, functions, secrets, PostgREST + auth config — against the same project; for mid-deploy failures or config changes), **Relink to a different Supabase project** (for deleted/wrong projects), or **Cancel**. The picker shows a dim hint above: _"If you just changed schemas or functions, cancel and run `agentlink env deploy <name>` instead."_ — steering users away from the heavier full-setup when the lighter deploy would do. `--retry` triggers the full-setup path non-interactively; `--project-ref <ref>` triggers relink.
 
 `env add` / `env relink` run an **org-first picker** — the user picks the Supabase organization BEFORE the connect-existing-vs-create-new choice, so both paths browse the correct org's projects. The picker merges API-visible orgs with cached orgs from previous logins and offers "+ Authorize a different organization…" to add a new one. On token validation failure (401/403 — org membership revoked, integration restrictions), the CLI surfaces "▲ Stored credentials for \<org\> are no longer accepted" and kicks off re-auth automatically.
 

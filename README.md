@@ -4,21 +4,19 @@
 
 An opinionated way to build on Supabase with AI agents.
 
-Agent Link is a Claude Code plugin with composable skills and an app development agent. Each skill covers a specific domain — CLI, schema development, RPCs, edge functions, auth, frontend — and Claude loads whichever skills are relevant to the current task automatically. The agent bundles all skills together with architecture enforcement.
+Agent Link is a [Claude Code plugin](https://docs.anthropic.com/en/docs/claude-code/plugins) with composable skills and an app development agent. Each skill covers a specific domain — CLI, schema development, RPCs, edge functions, auth, frontend — and Claude loads whichever skills are relevant to the current task automatically. The agent bundles all skills together with architecture enforcement.
 
 ---
 
 ## Install
 
-Agent Link is a [Claude Code plugin](https://docs.anthropic.com/en/docs/claude-code/plugins).
-
 ```bash
 # Recommended — install the CLI globally so you can use the bare `agentlink` command
-npm install -g create-agentlink@latest
+npm install -g agentlink-sh@latest
 agentlink <project-name>
 
 # Or run once via npx (fine for trying it out)
-npx create-agentlink@latest <project-name>
+npx agentlink-sh@latest <project-name>
 
 # From the Claude Code plugin marketplace
 /plugin marketplace add tomaspozo/agentlink
