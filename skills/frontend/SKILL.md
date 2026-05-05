@@ -496,12 +496,17 @@ Without this, RLS policies use stale claims until the token naturally expires.
 
 ### Post-signup & the `useTenantGuard` hook
 
-Direct signup has a JWT-timing race: the
-`_internal_admin_handle_new_user` trigger writes `tenant_id` into
-`raw_app_meta_data` AFTER Supabase issues the first JWT. The session
-returned from `signUp()` is stale — every tenant-scoped RPC returns
-NULL until the token refreshes. The scaffold handles this in two
-places:
+The custom access-token hook (`_hook_custom_access_token`) populates
+`tenant_id` / `tenant_role` / `permissions` on every JWT mint by reading
+`session_tenants` (per-device pin) with a fallback to the user's oldest
+membership. So in normal flows the very first JWT after sign-in already
+carries the right tenant — single-tenant apps need zero client-side
+selection logic.
+
+The one race that remains: a *direct signup* where the JWT is minted
+before the AFTER-INSERT trigger materializes the user's default
+membership. The session returned from `signUp()` lacks `tenant_id` until
+a refresh re-runs the hook. The scaffold handles this in two places:
 
 1. The scaffolded `/login` route calls
    `await supabase.auth.refreshSession()` immediately after `signUp()`
@@ -509,7 +514,10 @@ places:
 
 2. `useTenantGuard` is the safety net. When a gated page reads
    tenant-scoped data and the JWT lacks `tenant_id`, the hook calls
-   `tenant_list` → `tenant_select` → `refreshSession()`:
+   `refreshSession()` once — the access-token hook re-runs against the
+   now-present membership, the new JWT has the tenant baked in, and we
+   set `ready = true`. No `tenant_list` / `tenant_select` calls needed
+   on the client.
 
    ```typescript
    import { useTenantGuard } from "@/hooks/use-tenant-guard";
@@ -533,10 +541,41 @@ places:
    Skip it on purely personal pages (profile, account settings) where
    `auth.uid()` alone drives the policy.
 
-`useTenantGuard` defaults to `tenants[0]` on mount. If the user only
-belongs to one tenant (the common case — see the auth skill's
-"Tenancy UX" block), that's the whole story: no picker, no selection
-state.
+> **🛑 Critical gotcha — read tenant claims from `session.access_token`, NOT from `user.app_metadata`.**
+>
+> `session.user.app_metadata` reflects the `auth.users.raw_app_meta_data`
+> database row. This scaffold deliberately stopped writing tenant claims
+> to `raw_app_meta_data` (they live in `public.session_tenants` now and
+> get injected into the access-token JWT by `_hook_custom_access_token`).
+> So `user.app_metadata.tenant_id` is always empty on the client even
+> when the hook is firing perfectly. **Decode the JWT directly:**
+>
+> ```typescript
+> function decodeJwt(token: string | undefined) {
+>   if (!token) return null;
+>   const parts = token.split(".");
+>   if (parts.length !== 3) return null;
+>   const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+>   const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+>   try { return JSON.parse(decodeURIComponent(escape(atob(padded)))); }
+>   catch { return null; }
+> }
+>
+> const { session } = useAuth();
+> const claims = decodeJwt(session?.access_token);
+> const tenantId    = claims?.app_metadata?.tenant_id;
+> const tenantRole  = claims?.app_metadata?.tenant_role;
+> const permissions = claims?.app_metadata?.permissions ?? [];
+> ```
+>
+> Every place that gates UI on tenant context — `useTenantGuard`,
+> `activeTenantId` derivations, role/permission badges — must decode
+> the access token, not read `user.app_metadata`. The scaffolded
+> `useTenantGuard` already does this; copy its pattern.
+>
+> Server-side (RLS, RPCs) is unaffected — `auth.jwt()` in Postgres
+> reads from the actual JWT and continues to work via
+> `_auth_tenant_id()` / `_auth_has_permission(...)`.
 
 ### Scaffolded auth infrastructure (Vite projects)
 

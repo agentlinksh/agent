@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Auth skill rewritten for the per-session tenant + RBAC model.** `skills/auth/SKILL.md` and `skills/auth/references/rls_patterns.md` now lead with the custom access-token hook (`_hook_custom_access_token`) as the engine: per-device pin from `public.session_tenants` (keyed on `auth.sessions.id`) with a fallback to the user's oldest membership for single-tenant zero-touch. The tables-and-policies overview lists the four multitenancy tables (`tenants`, `memberships`, `invitations`, `session_tenants`) plus the three RBAC tables (`roles`, `permissions`, `role_permissions`); the "Tenancy UX" guidance is rewritten to match — single-tenant is zero-touch (no picker, no selection state); multi-tenant is per-device (each browser/phone has its own session pin). New "Why three tables instead of enums" subsection in `rls_patterns.md` covers the design tradeoffs (Postgres enums are append-only — apps grow new permissions constantly); "Adding a domain permission" worked example walks through the two-INSERT pattern. RLS examples switch from `_auth_has_role('admin')` to `_auth_has_permission('membership.delete')` etc. New "Wrap `_auth_*` helpers in `(SELECT ...)`" subsection — the planner promotes the call to an InitPlan, matches Supabase's RLS-performance docs. Helper code blocks updated to the new `LANGUAGE sql STABLE` bodies (inlinable by the planner) including `_auth_is_tenant_member`'s `(SELECT auth.uid())` wrap.
+
+- **Invitations always work even when the app is single-tenant style.** New "Invitations work even when the app is single-tenant style" subsection in `skills/auth/SKILL.md`: the invitation pipeline doesn't care whether the UI exposes a tenant switcher — admin invites a teammate, teammate signs up, AFTER-INSERT trigger skips default-tenant creation (`invited_at IS NOT NULL`), teammate accepts via `api.invitation_accept`, membership row is created and pinned to their current session, next refresh lands them inside the joined workspace. No code path requires a UI picker.
+
+- **RPC skill DEFINER worked example updated.** `skills/rpc/SKILL.md` swaps the `_internal_admin_set_tenant_claims` reference example for `_internal_admin_set_session_tenant`, with the session-ownership check (`auth.sessions.id = p_session_id AND user_id = p_user_id`) and the per-session UPSERT pattern.
+
+- **Frontend skill `useTenantGuard` description matches the simplified hook.** `skills/frontend/SKILL.md`'s "Post-signup & the useTenantGuard hook" subsection rewritten — the hook now refreshes the session once when `app_metadata.tenant_id` is missing and lets the access-token hook do the selection server-side; no more `tenant_list` → `tenant_select` round-trip from the client. The remaining edge case (a JWT minted before the AFTER-INSERT trigger materialized the membership row) is what the guard exists to handle.
+
 ## [0.23.1] - 2026-04-30
 
 ### Changed

@@ -61,7 +61,7 @@ through per function.
 
 > **Scaffolded by the CLI.** Profiles, tenants, and memberships are created automatically on signup via the `_internal_admin_handle_new_user` trigger. The SQL below is for reference — it already exists in your project. If missing, run `agentlink --force-update` — do not recreate manually.
 
-User metadata belongs in a `profiles` table, not in Supabase Auth metadata. The trigger creates the profile and — for direct signups — a default tenant, owner membership, and JWT claims. Invited users (created via `generateLink({ type: 'invite' })`) only get a profile; `invitation_accept()` handles adding them to the inviter's tenant:
+User metadata belongs in a `profiles` table, not in Supabase Auth metadata. The trigger creates the profile and — for direct signups — a default tenant + owner membership. Invited users (created via `generateLink({ type: 'invite' })`) only get a profile; `invitation_accept()` handles adding them to the inviter's tenant. JWT claims (`tenant_id`, `tenant_role`, `permissions`) are populated automatically on every JWT mint by the custom access-token hook (`_hook_custom_access_token`) — the trigger doesn't touch `auth.users.raw_app_meta_data`:
 
 ```sql
 -- supabase/schemas/public/profiles.sql
@@ -123,13 +123,9 @@ BEGIN
 
     INSERT INTO public.memberships (tenant_id, user_id, role)
     VALUES (v_tenant_id, NEW.id, 'owner');
-
-    UPDATE auth.users
-    SET raw_app_meta_data = COALESCE(raw_app_meta_data, '{}'::jsonb) || jsonb_build_object(
-      'tenant_id', v_tenant_id,
-      'tenant_role', 'owner'
-    )
-    WHERE id = NEW.id;
+    -- No raw_app_meta_data write here — the custom access-token hook
+    -- (_hook_custom_access_token) reads memberships on every JWT mint and
+    -- auto-selects the user's oldest membership when no per-session pin exists.
   END IF;
 
   RETURN NEW;
@@ -142,25 +138,13 @@ CREATE TRIGGER trg_auth_users_new_user
   EXECUTE FUNCTION public._internal_admin_handle_new_user();
 ```
 
-> **Post-signup JWT race.** This trigger writes `tenant_id` into
-> `raw_app_meta_data` AFTER Supabase issues the first JWT. The session
-> returned from `supabase.auth.signUp()` therefore has a stale token —
-> `_auth_tenant_id()` returns NULL and every tenant-scoped RPC fails
-> until the token refreshes. Two-part client fix:
->
-> 1. In the sign-up handler, call `await supabase.auth.refreshSession()`
->    right after `signUp()` succeeds and before navigating into the app.
-> 2. In gated pages that read tenant-scoped data, use the scaffolded
->    `useTenantGuard` hook (`src/hooks/use-tenant-guard.ts`) as a
->    safety net — when the JWT lacks `tenant_id`, it calls
->    `tenant_list` → `tenant_select` → `refreshSession()` and exposes
->    `{ ready, error }` so queries can gate on `ready`.
->
-> See the frontend skill's "Post-signup & the useTenantGuard hook"
-> section for the TS side. For the full client-side signup flow
-> (branching on `data.session`, email-confirmation pending state, error
-> mapping), see `frontend/references/auth_ui.md` → **Handling Supabase
-> Auth Responses**.
+> **Single-tenant zero-touch.** The custom access-token hook auto-selects the
+> user's oldest membership when no per-session pin exists. After signup the
+> first JWT minted already carries the right `tenant_id` — no `tenant_select`
+> dance required. The scaffolded `useTenantGuard` covers the only edge case:
+> a JWT minted *before* the AFTER-INSERT trigger materialized the membership
+> row. In that case it calls `refreshSession()` once, which re-runs the hook
+> against the now-present membership.
 
 **Need to customize signup logic?** If the app requires additional work on signup (e.g., creating rows in app-specific tables, syncing with external services), override `_internal_admin_handle_new_user` by removing its `-- @agentlink` annotation block in `supabase/schemas/public/_internal_admin.sql` and modifying the function body. Keep the same function name. The other managed functions in that file (`_internal_admin_get_secret`, `set_updated_at`, etc.) remain annotated and will continue receiving CLI updates. Apply with `agentlink db apply`.
 
@@ -310,18 +294,29 @@ USING (public._auth_chart_can_read(id));
 
 > **Scaffolded by the CLI.** The CLI scaffolds a complete multi-tenancy model including tables, RLS policies, auth helpers, and API RPCs. If missing, run `agentlink --force-update` — do not recreate manually. The agent builds application-specific tables on top of this foundation.
 
-The multi-tenancy model uses three tables (all in `supabase/schemas/public/multitenancy.sql`):
+The multi-tenancy model uses these tables:
 
 ```
-tenants          → The organizations/teams
-memberships      → Who belongs to which tenant, with what role
-invitations      → Pending invitations to join a tenant
+tenants           → Organizations/teams (multitenancy.sql)
+memberships       → Who belongs to which tenant, with what role (multitenancy.sql)
+invitations       → Pending invitations (multitenancy.sql)
+session_tenants   → Per-device tenant pin, keyed on auth.sessions.id (multitenancy.sql)
+roles             → Role definitions (_rbac.sql)
+permissions       → Permission catalog (_rbac.sql)
+role_permissions  → Role → permission matrix (_rbac.sql)
 tenant-scoped tables → Every row has a tenant_id column (agent creates these)
 ```
 
-On signup, `_internal_admin_handle_new_user()` automatically creates a default tenant and owner membership, and sets JWT claims. Auth helpers live in `supabase/schemas/public/_auth_tenant.sql`. API RPCs (6 functions: `tenant_select`, `tenant_list`, `tenant_create`, `invitation_create`, `invitation_accept`, `membership_list`) live in `supabase/schemas/api/tenant.sql`.
+**The custom access-token hook (`_hook_custom_access_token`) is the engine.** On every JWT mint (sign-in and refresh) it:
 
-Tenant context comes from JWT custom claims (`auth.jwt() -> 'app_metadata' ->> 'tenant_id'`), **not** from request parameters. RLS policies use this claim to filter rows automatically.
+1. Reads the per-device pin from `session_tenants` keyed on the session's `session_id`.
+2. Falls back to the user's oldest membership when no pin exists — single-tenant apps "just work" with no client-side selection.
+3. Looks up the user's permissions in `role_permissions`.
+4. Injects `tenant_id`, `tenant_role`, and `permissions` into `app_metadata`.
+
+Tenant context comes from JWT custom claims (`auth.jwt() -> 'app_metadata' ->> 'tenant_id'`), **not** from request parameters. RLS policies use these claims via `_auth_tenant_id()` and `_auth_has_permission()` to filter rows automatically.
+
+API RPCs live in `supabase/schemas/api/tenant.sql`: `tenant_select`, `tenant_list`, `tenant_create`, `invitation_create`, `invitation_accept`, `membership_list`. `tenant_select` writes `session_tenants` (per-device pin); `tenant_create` and `invitation_accept` also pin the new tenant to the caller's session so a single `refreshSession()` lands them inside it.
 
 > **Load [RLS Patterns](./references/rls_patterns.md) for tenant-scoped RLS policies, RBAC, invitation flows, and patterns for new tenant-scoped tables.**
 
@@ -336,18 +331,33 @@ The UX rule falls out of counting `tenants.length`:
 
 - **One tenant** (the common case for internal tools, invited-only
   portals, first-time signups, and solo users): never render a tenant
-  picker. Default to `tenants[0]`. `useTenantGuard` already does this
-  on mount, so most apps need nothing beyond what's scaffolded.
+  picker. The access-token hook auto-selects the user's oldest
+  membership, so the JWT already carries the right `tenant_id` from
+  the very first mint. `useTenantGuard` covers the post-signup edge
+  where the JWT preceded the membership row — most apps need nothing
+  beyond what's scaffolded.
 - **More than one tenant** (a user genuinely belongs to multiple
   workspaces): render a picker in chrome or on a dedicated switch
   page. Call `api.tenant_select` on change, then
-  `await supabase.auth.refreshSession()` so the new JWT carries the
-  updated claim.
+  `await supabase.auth.refreshSession()` — the hook re-runs and the
+  new JWT carries the chosen tenant + permissions. Per-device: each
+  laptop/phone has its own `session_tenants` pin, so switching on one
+  doesn't move the other.
 
 When the user asks for "a signup form" or "allow signups", the
 scaffolded `/login` route and `useTenantGuard` cover it. Don't add a
 tenant selector to the signup flow — a new direct signup always
 lands in a tenant of one.
+
+### Invitations work even when the app is single-tenant style
+
+The invitation pipeline doesn't care whether the UI exposes a tenant
+switcher. An admin invites a teammate; the teammate signs up; the
+AFTER-INSERT trigger skips default-tenant creation because
+`invited_at IS NOT NULL`; the teammate accepts via
+`api.invitation_accept`; the membership row is created and pinned to
+their current session; next refresh lands them inside the joined
+workspace. No code path requires a UI picker.
 
 ---
 

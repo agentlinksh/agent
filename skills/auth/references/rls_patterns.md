@@ -82,7 +82,11 @@ Every tenant-scoped table has a `tenant_id` column. RLS reads the tenant from JW
 
 ### Reading tenant context from JWT
 
-Supabase stores custom claims in `app_metadata`. The tenant ID is set during login/membership selection:
+Custom claims live in `app_metadata`. They're populated on every JWT mint by the **custom access-token hook** (`public._hook_custom_access_token`) — which reads the user's per-device tenant pin from `public.session_tenants` (or falls back to their oldest membership for single-tenant apps), then injects:
+
+- `app_metadata.tenant_id` — the active tenant for this device
+- `app_metadata.tenant_role` — the user's role in that tenant
+- `app_metadata.permissions` — array of permission names the role holds
 
 ```sql
 -- Extract tenant_id from JWT
@@ -134,74 +138,134 @@ USING (tenant_id = public._auth_tenant_id());
 
 ## Role-Based Access (RBAC)
 
-Roles are stored in the `memberships` table and optionally in JWT claims for fast policy evaluation.
+> **Scaffolded by the CLI.** Three lookup tables — `public.roles`, `public.permissions`, `public.role_permissions` — and the `_auth_has_permission(text)` helper are created in `supabase/schemas/public/_rbac.sql`. The default seed ships four roles (`owner`, `admin`, `member`, `viewer`) with a sensible permission matrix.
 
-### Role hierarchy
+### Why three tables instead of enums
 
-| Role | Can read | Can write | Can manage members | Can delete tenant |
-|------|----------|-----------|-------------------|-------------------|
-| `viewer` | Yes | No | No | No |
-| `member` | Yes | Yes | No | No |
-| `admin` | Yes | Yes | Yes | No |
-| `owner` | Yes | Yes | Yes | Yes |
-
-### Role-checking helper
+Postgres enums are append-only — you can't rename, remove, or reorder values without rebuilding the type. App permissions grow constantly (`charts.create`, `billing.read`, ...), so we model role and permission *sets* as data:
 
 ```sql
-CREATE OR REPLACE FUNCTION public._auth_tenant_role()
-RETURNS text
-LANGUAGE sql
-STABLE
-SECURITY INVOKER
-SET search_path = ''
-AS $$
-  SELECT (auth.jwt() -> 'app_metadata' ->> 'tenant_role')::text;
-$$;
+-- supabase/schemas/public/_rbac.sql (scaffolded — excerpt)
+CREATE TABLE public.roles (
+  name TEXT PRIMARY KEY, rank INT NOT NULL,
+  description TEXT, invitable BOOLEAN NOT NULL DEFAULT true
+);
 
--- For checking minimum role level
-CREATE OR REPLACE FUNCTION public._auth_has_role(p_minimum_role text)
-RETURNS boolean
-LANGUAGE plpgsql
-STABLE
-SECURITY INVOKER
-SET search_path = ''
-AS $$
-DECLARE
-  v_role text := public._auth_tenant_role();
-  v_levels jsonb := '{"viewer": 1, "member": 2, "admin": 3, "owner": 4}'::jsonb;
+CREATE TABLE public.permissions (
+  name TEXT PRIMARY KEY, description TEXT
+);
+
+CREATE TABLE public.role_permissions (
+  role_name       TEXT REFERENCES public.roles(name)       ON UPDATE CASCADE ON DELETE CASCADE,
+  permission_name TEXT REFERENCES public.permissions(name) ON UPDATE CASCADE ON DELETE CASCADE,
+  PRIMARY KEY (role_name, permission_name)
+);
+```
+
+Renaming a role propagates everywhere via `ON UPDATE CASCADE`. Adding a permission is one INSERT. The FKs catch typos at write time, giving the same safety enums would.
+
+### Adding a domain permission
+
+```sql
+-- Register the permission (apps add their own)
+INSERT INTO public.permissions (name, description) VALUES
+  ('charts.create', 'Create charts'),
+  ('charts.delete', 'Delete charts')
+ON CONFLICT DO NOTHING;
+
+-- Bind it to roles. Explicit, no computed inheritance — list every (role, perm)
+-- pair you want. This keeps non-hierarchical roles (e.g. a future
+-- 'billing_admin') possible without restructuring.
+INSERT INTO public.role_permissions (role_name, permission_name) VALUES
+  ('owner',  'charts.create'), ('owner',  'charts.delete'),
+  ('admin',  'charts.create'), ('admin',  'charts.delete'),
+  ('member', 'charts.create')
+ON CONFLICT DO NOTHING;
+```
+
+### `_auth_has_permission` — the primary RBAC primitive
+
+The custom access-token hook reads `role_permissions` and bakes the user's permissions into JWT `app_metadata.permissions`. `_auth_has_permission` then becomes a pure jsonb membership check — no table read at policy-evaluation time:
+
+```sql
+-- supabase/schemas/public/_rbac.sql (scaffolded)
+CREATE OR REPLACE FUNCTION public._auth_has_permission(p_permission text)
+RETURNS boolean LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path = '' AS $$
 BEGIN
-  RETURN (v_levels ->> v_role)::int >= (v_levels ->> p_minimum_role)::int;
+  RETURN COALESCE(
+    (auth.jwt()->'app_metadata'->'permissions') ? p_permission,
+    false
+  );
 END;
 $$;
 ```
 
-### Role-based policies
+### Permission-based policies (preferred)
 
 ```sql
--- Viewers and above can read
+-- Anyone in the tenant can read
 DROP POLICY IF EXISTS members_read_projects ON public.projects;
 CREATE POLICY members_read_projects
 ON public.projects FOR SELECT
 USING (tenant_id = public._auth_tenant_id());
 
--- Members and above can write
-DROP POLICY IF EXISTS members_insert_projects ON public.projects;
-CREATE POLICY members_insert_projects
+-- Only roles holding 'projects.create' can insert
+DROP POLICY IF EXISTS authorized_insert_projects ON public.projects;
+CREATE POLICY authorized_insert_projects
 ON public.projects FOR INSERT
 WITH CHECK (
   tenant_id = public._auth_tenant_id()
-  AND public._auth_has_role('member')
+  AND public._auth_has_permission('projects.create')
 );
 
--- Admins and above can delete
-DROP POLICY IF EXISTS admins_delete_projects ON public.projects;
-CREATE POLICY admins_delete_projects
+-- Only roles holding 'projects.delete' can delete
+DROP POLICY IF EXISTS authorized_delete_projects ON public.projects;
+CREATE POLICY authorized_delete_projects
 ON public.projects FOR DELETE
 USING (
   tenant_id = public._auth_tenant_id()
-  AND public._auth_has_role('admin')
+  AND public._auth_has_permission('projects.delete')
 );
 ```
+
+### Role hierarchy via `_auth_has_role`
+
+The legacy hierarchical check is still scaffolded for cases where you want "any role at admin or above" semantics. It reads `rank` from the roles table — the hierarchy is data, not a hardcoded ladder. `LANGUAGE sql STABLE` so the planner can inline it inside RLS predicates:
+
+```sql
+-- supabase/schemas/public/_auth_tenant.sql (scaffolded)
+CREATE OR REPLACE FUNCTION public._auth_has_role(p_minimum_role text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path = '' AS $$
+  SELECT COALESCE(
+    (SELECT rank FROM public.roles WHERE name = public._auth_tenant_role())
+      >=
+    (SELECT rank FROM public.roles WHERE name = p_minimum_role),
+    false
+  );
+$$;
+```
+
+**Prefer `_auth_has_permission`.** It maps to capabilities (what someone can *do*), not seniority. Use `_auth_has_role` only when you genuinely want a hierarchy — e.g. an admin dashboard that shows different sections based on rank.
+
+### Wrap `_auth_*` helpers in `(SELECT ...)` inside RLS predicates
+
+When calling these helpers from a USING/WITH CHECK clause, wrap each call in a subquery so the planner promotes it to an InitPlan (one evaluation per query, not per row):
+
+```sql
+-- ✅ CORRECT — InitPlan, single evaluation
+USING (
+  tenant_id = (SELECT public._auth_tenant_id())
+  AND (SELECT public._auth_has_permission('membership.read'))
+)
+
+-- ❌ AVOID — bare calls may be re-evaluated per row in some plans
+USING (
+  tenant_id = public._auth_tenant_id()
+  AND public._auth_has_permission('membership.read')
+)
+```
+
+The helpers themselves are `LANGUAGE sql STABLE` so the planner can also inline them — but the wrap is universal best practice and matches Supabase's documented RLS-performance pattern.
 
 ---
 
@@ -227,7 +291,7 @@ CREATE TABLE IF NOT EXISTS public.memberships (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member', 'viewer')),
+  role TEXT NOT NULL DEFAULT 'member' REFERENCES public.roles(name) ON UPDATE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (tenant_id, user_id)
 );
@@ -238,7 +302,8 @@ CREATE TABLE IF NOT EXISTS public.invitations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member', 'viewer')),
+  role TEXT NOT NULL DEFAULT 'member' REFERENCES public.roles(name) ON UPDATE CASCADE
+    CHECK (role <> 'owner'),
   invited_by UUID NOT NULL REFERENCES auth.users(id),
   token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
   expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '7 days'),
@@ -247,24 +312,34 @@ CREATE TABLE IF NOT EXISTS public.invitations (
 );
 
 ALTER TABLE public.invitations ENABLE ROW LEVEL SECURITY;
+
+-- Per-device tenant pin — keyed on the auth.sessions row, so each device's
+-- tenant choice is independent. The custom access-token hook reads this on
+-- every JWT mint to populate app_metadata.tenant_id.
+CREATE TABLE IF NOT EXISTS public.session_tenants (
+  session_id  UUID PRIMARY KEY REFERENCES auth.sessions(id) ON DELETE CASCADE,
+  user_id     UUID NOT NULL REFERENCES auth.users(id)       ON DELETE CASCADE,
+  tenant_id   UUID NOT NULL REFERENCES public.tenants(id)   ON DELETE CASCADE,
+  tenant_role TEXT NOT NULL REFERENCES public.roles(name)   ON UPDATE CASCADE,
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.session_tenants ENABLE ROW LEVEL SECURITY;
 ```
 
 ### Membership check helper
 
 ```sql
 CREATE OR REPLACE FUNCTION public._auth_is_tenant_member(p_tenant_id uuid)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER  -- required: RLS on memberships would cause recursion
-SET search_path = ''
-AS $$
-BEGIN
-  RETURN EXISTS (
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+  -- DEFINER: required because RLS on memberships would cause recursion when
+  -- this is called by a policy on the tenants table. SQL STABLE so the
+  -- planner can inline this inside RLS predicates.
+  SELECT EXISTS (
     SELECT 1 FROM public.memberships
     WHERE tenant_id = p_tenant_id
-    AND user_id = auth.uid()
+      AND user_id = (SELECT auth.uid())
   );
-END;
 $$;
 ```
 
@@ -277,98 +352,118 @@ $$;
 DROP POLICY IF EXISTS members_read_own_tenant ON public.tenants;
 CREATE POLICY members_read_own_tenant ON public.tenants
   FOR SELECT TO authenticated
-  USING (public._auth_is_tenant_member(id));
+  USING ((SELECT public._auth_is_tenant_member(id)));
 
--- Tenants: owners can update
-DROP POLICY IF EXISTS owners_update_tenant ON public.tenants;
-CREATE POLICY owners_update_tenant ON public.tenants
+-- Tenants: roles holding tenant.update can update
+DROP POLICY IF EXISTS authorized_update_tenant ON public.tenants;
+CREATE POLICY authorized_update_tenant ON public.tenants
   FOR UPDATE TO authenticated
-  USING (public._auth_is_tenant_member(id) AND public._auth_has_role('owner'));
+  USING (
+    (SELECT public._auth_is_tenant_member(id))
+    AND (SELECT public._auth_has_permission('tenant.update'))
+  );
 
--- Memberships: members can see other members of their tenant
+-- Memberships: roles holding membership.read can see other members of their tenant
 DROP POLICY IF EXISTS members_read_memberships ON public.memberships;
 CREATE POLICY members_read_memberships ON public.memberships
   FOR SELECT TO authenticated
-  USING (tenant_id = public._auth_tenant_id());
+  USING (
+    tenant_id = (SELECT public._auth_tenant_id())
+    AND (SELECT public._auth_has_permission('membership.read'))
+  );
 
--- Memberships: admins can add members
-DROP POLICY IF EXISTS admins_insert_memberships ON public.memberships;
-CREATE POLICY admins_insert_memberships ON public.memberships
+-- Memberships: roles holding membership.delete can add/remove members
+DROP POLICY IF EXISTS authorized_insert_memberships ON public.memberships;
+CREATE POLICY authorized_insert_memberships ON public.memberships
   FOR INSERT TO authenticated
-  WITH CHECK (tenant_id = public._auth_tenant_id() AND public._auth_has_role('admin'));
+  WITH CHECK (
+    tenant_id = (SELECT public._auth_tenant_id())
+    AND (SELECT public._auth_has_permission('membership.delete'))
+  );
 
--- Memberships: admins can remove members (but not themselves)
-DROP POLICY IF EXISTS admins_delete_memberships ON public.memberships;
-CREATE POLICY admins_delete_memberships ON public.memberships
+DROP POLICY IF EXISTS authorized_delete_memberships ON public.memberships;
+CREATE POLICY authorized_delete_memberships ON public.memberships
   FOR DELETE TO authenticated
   USING (
-    tenant_id = public._auth_tenant_id()
-    AND public._auth_has_role('admin')
-    AND user_id != (SELECT auth.uid())
+    tenant_id = (SELECT public._auth_tenant_id())
+    AND (SELECT public._auth_has_permission('membership.delete'))
+    AND user_id != (SELECT auth.uid())  -- can't remove yourself
   );
 ```
 
-### Setting JWT claims
+### Setting tenant context — per-device via the access-token hook
 
-When a user selects a tenant (at login or via tenant switching), set the custom claims in their JWT. The api wrapper is `SECURITY INVOKER` — it validates the caller and delegates the privileged `auth.users` write to a `_internal_admin_*` helper in `public`. This pattern silences linter 0028/0029 (DEFINER-in-exposed-schema) while keeping the same end behavior.
+Tenant selection is **per device**, not per user. Each `auth.sessions` row (one per active login on phone, laptop, etc.) has its own `public.session_tenants` pin. The custom access-token hook reads this on every JWT mint and bakes the choice into `app_metadata.tenant_id` / `tenant_role` / `permissions`. Switching on phone never moves the laptop's pin.
+
+The hook also auto-falls-back to the user's oldest membership when no pin exists, so single-tenant apps never need to call `tenant_select` — the very first JWT carries the right tenant.
 
 ```sql
--- Privileged helper — DEFINER in public, NOT in api. Linter doesn't see it.
-CREATE OR REPLACE FUNCTION public._internal_admin_set_tenant_claims(
+-- Privileged helper — reads session_id from auth.jwt() inside the function
+-- (NOT a parameter). Supabase signs the JWT, so the session_id we read is
+-- guaranteed to belong to the calling user; that removes the need for an
+-- auth.sessions ownership check (which would require SELECT on auth.sessions
+-- — NOT granted to postgres on Supabase Cloud) without weakening security.
+CREATE OR REPLACE FUNCTION public._internal_admin_set_session_tenant(
   p_user_id uuid, p_tenant_id uuid, p_role text
 ) RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE
+  v_session_id uuid;
 BEGIN
-  -- Defense in depth: caller must match auth.uid()
   IF (SELECT auth.uid()) IS DISTINCT FROM p_user_id THEN
-    RAISE EXCEPTION 'Cannot set claims for another user';
+    RAISE EXCEPTION 'Cannot set session tenant for another user';
   END IF;
-  UPDATE auth.users
-  SET raw_app_meta_data = COALESCE(raw_app_meta_data, '{}'::jsonb)
-    || jsonb_build_object('tenant_id', p_tenant_id, 'tenant_role', p_role)
-  WHERE id = p_user_id;
+
+  v_session_id := NULLIF((SELECT auth.jwt()->>'session_id'), '')::uuid;
+  IF v_session_id IS NULL THEN
+    RAISE EXCEPTION 'No session — JWT is missing session_id';
+  END IF;
+
+  INSERT INTO public.session_tenants (session_id, user_id, tenant_id, tenant_role, updated_at)
+  VALUES (v_session_id, p_user_id, p_tenant_id, p_role, now())
+  ON CONFLICT (session_id) DO UPDATE
+    SET tenant_id   = EXCLUDED.tenant_id,
+        tenant_role = EXCLUDED.tenant_role,
+        user_id     = EXCLUDED.user_id,  -- safety: rewrite to caller's
+        updated_at  = now();
 END; $$;
 
-REVOKE ALL ON FUNCTION public._internal_admin_set_tenant_claims(uuid, uuid, text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public._internal_admin_set_tenant_claims(uuid, uuid, text) TO authenticated, service_role;
-
--- API wrapper — INVOKER, validates membership, delegates privileged write
+-- API wrapper — INVOKER, validates membership, delegates the pin write
 CREATE OR REPLACE FUNCTION api.tenant_select(p_tenant_id uuid)
 RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY INVOKER
-SET search_path = ''
-AS $$
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' AS $$
 DECLARE
   v_user_id uuid := (SELECT auth.uid());
   v_role text;
 BEGIN
-  -- Verify membership exists. Reads under RLS — relies on
-  -- users_read_own_memberships policy on public.memberships.
+  -- Reads memberships under RLS — relies on users_read_own_memberships policy.
   SELECT role INTO v_role FROM public.memberships
    WHERE tenant_id = p_tenant_id AND user_id = v_user_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Not a member of this tenant'; END IF;
 
-  PERFORM public._internal_admin_set_tenant_claims(v_user_id, p_tenant_id, v_role);
+  PERFORM public._internal_admin_set_session_tenant(v_user_id, p_tenant_id, v_role);
 
-  RETURN jsonb_build_object(
-    'success', true,
-    'tenant_id', p_tenant_id,
-    'role', v_role
-  );
+  RETURN jsonb_build_object('id', p_tenant_id, 'role', v_role);
 END; $$;
 ```
 
-After calling this, the client must refresh the session to get a new JWT with the updated claims:
+**Why no `session_id` parameter on the helper.** Supabase Cloud locks down `auth.sessions` (owned by `supabase_auth_admin`, not granted to `postgres`), so the original "validate the session belongs to the user" check failed with permission denied. Reading `session_id` from `auth.jwt()` inside the DEFINER function is strictly better: the JWT is signed, so the session_id we read is by construction the caller's real session — there's no parameter to spoof.
+
+After calling this, the client refreshes the session — the hook re-runs and the new JWT carries the chosen tenant:
 
 ```typescript
 // Client-side after tenant selection
 await supabase.rpc("tenant_select", { p_tenant_id: tenantId });
-await supabase.auth.refreshSession();  // gets new JWT with tenant_id claim
+await supabase.auth.refreshSession();  // hook injects new tenant_id + permissions
 ```
+
+### Membership changes auto-sync to session pins
+
+A trigger on `public.memberships` keeps `session_tenants` in sync:
+- **Role change** → updates `tenant_role` on every pin for that (user, tenant) so next refresh has the new permissions.
+- **Membership delete** → removes the pin so the user falls back to another tenant (or none) on next refresh.
+
+In-flight JWTs keep their old claims until the next refresh (standard JWT limitation, mitigated by `jwt_expiry`). For fast-revoke needs, shorten `jwt_expiry` in `config.toml`.
 
 ---
 
@@ -397,14 +492,26 @@ BEGIN
     RAISE EXCEPTION 'Cannot create invitation on behalf of another user';
   END IF;
 
-  -- Verify admin via direct membership read (DEFINER bypasses RLS)
-  IF NOT EXISTS (
-    SELECT 1 FROM public.memberships
-    WHERE tenant_id = p_tenant_id AND user_id = p_user_id
-      AND role IN ('admin', 'owner')
-  ) THEN
-    RAISE EXCEPTION 'Only admins can create invitations';
-  END IF;
+  -- Verify caller holds invitation.create. We resolve the role from the actual
+  -- membership row (DEFINER bypasses RLS) and check it against role_permissions
+  -- — guards against stale JWT claims for users with multiple tenants.
+  DECLARE v_caller_role text;
+  BEGIN
+    SELECT role INTO v_caller_role FROM public.memberships
+     WHERE tenant_id = p_tenant_id AND user_id = p_user_id;
+    IF v_caller_role IS NULL THEN RAISE EXCEPTION 'Not a member of this tenant'; END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM public.role_permissions
+       WHERE role_name = v_caller_role AND permission_name = 'invitation.create'
+    ) THEN
+      RAISE EXCEPTION 'Your role does not permit creating invitations';
+    END IF;
+
+    -- The invited role must be marked invitable (default seed: 'owner' is not).
+    IF NOT (SELECT invitable FROM public.roles WHERE name = p_role) THEN
+      RAISE EXCEPTION 'Role % cannot be assigned via invitation', p_role;
+    END IF;
+  END;
 
   INSERT INTO public.invitations (tenant_id, email, role, invited_by)
   VALUES (p_tenant_id, p_email, p_role, p_user_id)
@@ -486,10 +593,9 @@ BEGIN
   UPDATE public.invitations SET accepted_at = now() WHERE id = v_invitation.id;
   SELECT * INTO v_tenant FROM public.tenants WHERE id = v_invitation.tenant_id;
 
-  UPDATE auth.users
-  SET raw_app_meta_data = COALESCE(raw_app_meta_data, '{}'::jsonb)
-    || jsonb_build_object('tenant_id', v_invitation.tenant_id, 'tenant_role', v_invitation.role)
-  WHERE id = p_user_id;
+  -- No JWT claim writes — the api wrapper pins the new tenant to the caller's
+  -- session via _internal_admin_set_session_tenant, then a single client-side
+  -- refreshSession() lands them inside the joined workspace.
 
   RETURN jsonb_build_object(
     'id', v_tenant.id, 'name', v_tenant.name, 'slug', v_tenant.slug,
@@ -500,18 +606,23 @@ END; $$;
 REVOKE ALL ON FUNCTION public._internal_admin_complete_invitation(uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public._internal_admin_complete_invitation(uuid, uuid) TO authenticated, service_role;
 
--- API wrapper — INVOKER, delegates everything
+-- API wrapper — INVOKER, delegates the membership write, then pins the tenant
 CREATE OR REPLACE FUNCTION api.invitation_accept(p_token uuid)
 RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY INVOKER
-SET search_path = ''
-AS $$
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' AS $$
 DECLARE
-  v_user_id uuid := (SELECT auth.uid());
+  v_user_id    uuid := (SELECT auth.uid());
+  v_session_id uuid := NULLIF(auth.jwt()->>'session_id', '')::uuid;
+  v_result     jsonb;
 BEGIN
   IF v_user_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
-  RETURN public._internal_admin_complete_invitation(v_user_id, p_token);
+  v_result := public._internal_admin_complete_invitation(v_user_id, p_token);
+  IF v_session_id IS NOT NULL THEN
+    PERFORM public._internal_admin_set_session_tenant(
+      v_session_id, v_user_id, (v_result->>'id')::uuid, v_result->>'role'
+    );
+  END IF;
+  RETURN v_result;
 END; $$;
 ```
 

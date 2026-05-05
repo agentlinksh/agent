@@ -90,23 +90,35 @@ BEGIN
 END; $$;
 
 -- ✅ CORRECT — INVOKER wrapper in api delegates to DEFINER helper in public
-CREATE OR REPLACE FUNCTION public._internal_admin_set_tenant_claims(
+CREATE OR REPLACE FUNCTION public._internal_admin_set_session_tenant(
   p_user_id uuid, p_tenant_id uuid, p_role text
 ) RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER       -- in public, not exposed → linter doesn't see it
 SET search_path = ''
 AS $$
+DECLARE
+  v_session_id uuid;
 BEGIN
-  -- Defense in depth: caller must match auth.uid()
   IF (SELECT auth.uid()) IS DISTINCT FROM p_user_id THEN
-    RAISE EXCEPTION 'Cannot set claims for another user';
+    RAISE EXCEPTION 'Cannot set session tenant for another user';
   END IF;
-  UPDATE auth.users SET raw_app_meta_data = ... WHERE id = p_user_id;
+  -- Read session_id from the caller's signed JWT — never a parameter.
+  -- The JWT is trusted, so this is by construction the caller's real session.
+  v_session_id := NULLIF((SELECT auth.jwt()->>'session_id'), '')::uuid;
+  IF v_session_id IS NULL THEN
+    RAISE EXCEPTION 'No session — JWT is missing session_id';
+  END IF;
+  INSERT INTO public.session_tenants (session_id, user_id, tenant_id, tenant_role)
+  VALUES (v_session_id, p_user_id, p_tenant_id, p_role)
+  ON CONFLICT (session_id) DO UPDATE
+    SET tenant_id = EXCLUDED.tenant_id,
+        tenant_role = EXCLUDED.tenant_role,
+        user_id = EXCLUDED.user_id;
 END; $$;
 
-REVOKE ALL ON FUNCTION public._internal_admin_set_tenant_claims(uuid, uuid, text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public._internal_admin_set_tenant_claims(uuid, uuid, text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public._internal_admin_set_session_tenant(uuid, uuid, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public._internal_admin_set_session_tenant(uuid, uuid, text) TO authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION api.tenant_select(p_tenant_id uuid)
 RETURNS jsonb
@@ -122,10 +134,12 @@ BEGIN
    WHERE tenant_id = p_tenant_id AND user_id = v_user_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Not a member of this tenant'; END IF;
 
-  PERFORM public._internal_admin_set_tenant_claims(v_user_id, p_tenant_id, v_role);
+  PERFORM public._internal_admin_set_session_tenant(v_user_id, p_tenant_id, v_role);
   RETURN ...;
 END; $$;
 ```
+
+**Why the helper reads `session_id` from `auth.jwt()` instead of accepting it as a parameter.** Originally we passed `p_session_id` from the wrapper and validated it against `auth.sessions`. That validation required the function owner (`postgres`) to have SELECT on `auth.sessions` — NOT granted on Supabase Cloud (the table belongs to `supabase_auth_admin` and is locked down). Reading the session_id from `auth.jwt()` inside the DEFINER function avoids the auth.sessions dependency without weakening security: the JWT is signed by Supabase, so whatever session_id we read is by construction the caller's real session, and there's no parameter for a malicious direct caller to spoof.
 
 **Where DEFINER is allowed:**
 
